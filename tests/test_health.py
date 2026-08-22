@@ -1,7 +1,8 @@
-"""Тесты health-эндпоинтов (итерация 0)."""
+"""Тесты health-эндпоинтов."""
 
 from aiohttp.test_utils import TestClient, TestServer
 import pytest
+from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient as FastAPITestClient
 
 from delivery_bot.api import create_api_app
@@ -26,13 +27,27 @@ async def test_bot_health_ok() -> None:
 
 
 @pytest.mark.asyncio
-async def test_bot_ready_ok() -> None:
-    app = create_health_app()
+async def test_bot_ready_without_redis_not_ready() -> None:
+    app = create_health_app(redis=None)
+    async with TestClient(TestServer(app)) as client:
+        resp = await client.get("/ready")
+        assert resp.status == 503
+        data = await resp.json()
+        assert data["status"] == "not_ready"
+        assert data["checks"]["redis"] is False
+
+
+@pytest.mark.asyncio
+async def test_bot_ready_with_redis_ok() -> None:
+    redis = FakeRedis(decode_responses=True)
+    app = create_health_app(redis=redis)
     async with TestClient(TestServer(app)) as client:
         resp = await client.get("/ready")
         assert resp.status == 200
         data = await resp.json()
         assert data["status"] == "ready"
+        assert data["checks"]["redis"] is True
+    await redis.aclose()
 
 
 def test_api_health_ok() -> None:

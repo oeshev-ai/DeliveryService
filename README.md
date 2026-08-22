@@ -50,14 +50,24 @@ pytest
 src/delivery_bot/
   channels/     # адаптеры каналов (Telegram + stubs)
   handlers/     # aiogram handlers
-  dialog/       # Dialog Manager / FSM (итерация 1+)
+  dialog/       # Dialog Manager / FSM / intents / sessions
+  middleware/   # загрузка сессии
   services/     # бизнес-логика (итерация 2+)
   integrations/ # OMS, TMS, Payments, CRM, LLM (итерация 2+)
   api/          # FastAPI app
   worker/       # ARQ worker
 ```
 
+## Итерация 1 (диалоговое ядро)
+
+- Согласие на ПДн / оферту перед сценариями
+- FSM + сессии в Redis (TTL 30 мин), согласие хранится отдельно
+- Главное меню (inline-кнопки)
+- Intent matching: команды + keywords + callbacks
+- AttemptLimiter (5 / 15 мин → блок 30 мин) — готов к верификации заказа
+- Продление диалога после истечения сессии
+
 ## Итерации
 
-См. согласованное ТЗ: Итерация 0 (каркас) → … → Итерация 10 (harden).
+См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).
 """

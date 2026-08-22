@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     health_host: str = "0.0.0.0"
     health_port: int = 8081
 
+    # Диалог / сессии
+    session_ttl_seconds: int = 1800
+    consent_ttl_seconds: int = 31_536_000
+    verify_max_attempts: int = 5
+    verify_attempt_window_seconds: int = 900
+    verify_block_seconds: int = 1800
+
     llm_faq_enabled: bool = False
     payment_mock: bool = True
     oms_mock: bool = True

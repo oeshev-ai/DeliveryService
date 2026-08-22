@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from aiohttp import web
+from redis.asyncio import Redis
 
 from delivery_bot import __version__
 from delivery_bot.logging_setup import get_logger
+from delivery_bot.redis_client import ping_redis
 
 logger = get_logger(__name__)
+
+REDIS_KEY = web.AppKey("redis", Redis | None)
 
 
 async def health_handler(request: web.Request) -> web.Response:
@@ -22,30 +26,38 @@ async def health_handler(request: web.Request) -> web.Response:
 
 
 async def ready_handler(request: web.Request) -> web.Response:
-    """Readiness: базовые зависимости (расширится в следующих итерациях)."""
-    # Итерация 0: считаем ready, если приложение запущено.
-    # Позже здесь появятся проверки Redis/Postgres/Telegram.
+    """Readiness: Redis (и далее Postgres/Telegram)."""
+    redis = request.app.get(REDIS_KEY)
+    redis_ok = await ping_redis(redis) if redis is not None else False
+    ready = redis_ok
+    status = 200 if ready else 503
     return web.json_response(
         {
-            "status": "ready",
+            "status": "ready" if ready else "not_ready",
             "service": "bot",
             "version": __version__,
-            "checks": {"app": True},
-        }
+            "checks": {"app": True, "redis": redis_ok},
+        },
+        status=status,
     )
 
 
-def create_health_app() -> web.Application:
+def create_health_app(redis: Redis | None = None) -> web.Application:
     """Создаёт aiohttp-приложение с /health и /ready."""
     app = web.Application()
+    app[REDIS_KEY] = redis
     app.router.add_get("/health", health_handler)
     app.router.add_get("/ready", ready_handler)
     return app
 
 
-async def start_health_server(host: str, port: int) -> web.AppRunner:
+async def start_health_server(
+    host: str,
+    port: int,
+    redis: Redis | None = None,
+) -> web.AppRunner:
     """Запускает health-сервер и возвращает runner для последующей остановки."""
-    app = create_health_app()
+    app = create_health_app(redis=redis)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, host=host, port=port)
