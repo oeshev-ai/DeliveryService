@@ -18,7 +18,6 @@ from delivery_bot.logging_setup import get_logger
 logger = get_logger(__name__)
 
 _COMING_SOON_INTENTS = {
-    Intent.CHANGE,
     Intent.CANCEL,
     Intent.FAQ,
     Intent.CLAIM,
@@ -34,10 +33,10 @@ class DialogResponse:
     text: str
     reply_markup: object | None = None
     require_consent: bool = False
-    # Если True — handler должен делегировать в OrderStatusService
     delegate_status: bool = False
     force_new_status: bool = False
     delegate_courier: bool = False
+    delegate_change: bool = False
 
 
 class DialogManager:
@@ -108,6 +107,9 @@ class DialogManager:
         if match.intent == Intent.COURIER:
             return DialogResponse(text="", delegate_courier=True)
 
+        if match.intent == Intent.CHANGE:
+            return DialogResponse(text="", delegate_change=True)
+
         if match.intent == Intent.HELP:
             return DialogResponse(
                 text=texts.HELP_TEXT,
@@ -123,9 +125,16 @@ class DialogManager:
 
         if match.intent == Intent.OPERATOR:
             session.state = DialogState.ESCALATED
+            session.context["escalation_reason"] = session.last_intent or "operator"
             return DialogResponse(
                 text=texts.OPERATOR_STUB_TEXT,
-                reply_markup=self._menu(session),
+                reply_markup=main_menu_keyboard(
+                    active_order_id=(
+                        str(session.context["verified_order_id"])
+                        if session.context.get("verified_order_id")
+                        else None
+                    )
+                ),
             )
 
         if match.intent in _COMING_SOON_INTENTS:

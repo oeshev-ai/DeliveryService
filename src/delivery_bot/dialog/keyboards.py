@@ -181,6 +181,35 @@ def continue_session_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def operator_offer_keyboard(
+    *,
+    active_order_id: str | None = None,
+    include_change_retry: bool = False,
+) -> InlineKeyboardMarkup:
+    """Клавиатура с явным вызовом оператора (когда бот не может помочь)."""
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text="👤 Связаться с оператором",
+                callback_data="menu:operator",
+            )
+        ]
+    ]
+    if include_change_retry:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="📍 Указать другой адрес",
+                    callback_data="change:address",
+                )
+            ]
+        )
+    rows.append(
+        [InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def _webapp_order_url(
     webapp_url: str,
     order_id: str,

@@ -13,6 +13,15 @@ from delivery_bot.integrations.oms.schemas import (
     VerifyRequest,
     VerifyResponse,
 )
+from delivery_bot.integrations.oms.change_schemas import (
+    AddressQuoteRequest,
+    AddressQuoteResponse,
+    ApplyAddressChangeRequest,
+    ApplyAddressChangeResponse,
+    ApplySlotChangeRequest,
+    ApplySlotChangeResponse,
+    DeliveryRulesDTO,
+)
 from delivery_bot.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -110,3 +119,66 @@ class OmsClient:
         if resp.status_code >= 400:
             raise OmsError(f"OMS error {resp.status_code}")
         return [OrderSummaryDTO.model_validate(item) for item in resp.json()]
+
+    async def get_delivery_rules(self) -> DeliveryRulesDTO:
+        try:
+            resp = await self._http().get("/oms/v1/delivery/rules")
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 400:
+            raise OmsError(f"OMS error {resp.status_code}")
+        return DeliveryRulesDTO.model_validate(resp.json())
+
+    async def quote_address(
+        self, order_id: str, address: str
+    ) -> AddressQuoteResponse:
+        payload = AddressQuoteRequest(order_id=order_id, address=address)
+        try:
+            resp = await self._http().post(
+                "/oms/v1/orders/quote-address",
+                json=payload.model_dump(mode="json"),
+            )
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 500:
+            raise OmsError(f"OMS error {resp.status_code}")
+        if resp.status_code == 404:
+            raise OmsError("Order not found")
+        return AddressQuoteResponse.model_validate(resp.json())
+
+    async def change_address(
+        self,
+        order_id: str,
+        address: str,
+        idempotency_key: str,
+    ) -> ApplyAddressChangeResponse:
+        payload = ApplyAddressChangeRequest(
+            order_id=order_id,
+            address=address,
+            idempotency_key=idempotency_key,
+        )
+        try:
+            resp = await self._http().post(
+                "/oms/v1/orders/change-address",
+                json=payload.model_dump(mode="json"),
+            )
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 500:
+            raise OmsError(f"OMS error {resp.status_code}")
+        return ApplyAddressChangeResponse.model_validate(resp.json())
+
+    async def change_slot(
+        self, order_id: str, slot_id: str
+    ) -> ApplySlotChangeResponse:
+        payload = ApplySlotChangeRequest(order_id=order_id, slot_id=slot_id)
+        try:
+            resp = await self._http().post(
+                "/oms/v1/orders/change-slot",
+                json=payload.model_dump(),
+            )
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 500:
+            raise OmsError(f"OMS error {resp.status_code}")
+        return ApplySlotChangeResponse.model_validate(resp.json())

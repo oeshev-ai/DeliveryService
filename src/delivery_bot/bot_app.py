@@ -20,6 +20,7 @@ from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
 from delivery_bot.redis_client import create_redis, ping_redis
 from delivery_bot.services.courier import CourierService
+from delivery_bot.services.order_change import OrderChangeService
 from delivery_bot.services.order_status import OrderStatusService
 from delivery_bot.webapp.bindings import WebAppBindingStore
 
@@ -81,6 +82,7 @@ async def _run() -> None:
         tms,
         webapp_url=settings.telegram_webapp_url,
     )
+    change_service = OrderChangeService(oms, status_cache)
     dialog_manager = DialogManager()
 
     bot = Bot(
@@ -91,6 +93,7 @@ async def _run() -> None:
     dp["dialog_manager"] = dialog_manager
     dp["status_service"] = status_service
     dp["courier_service"] = courier_service
+    dp["change_service"] = change_service
     dp["attempt_limiter"] = attempt_limiter
     dp["redis"] = redis
     dp.update.middleware(DialogSessionMiddleware(session_store))
