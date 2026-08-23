@@ -114,6 +114,14 @@ src/delivery_bot/
 - API: `GET /oms/v1/cancel-reasons`, `POST /oms/v1/orders/cancel`, `POST /oms/v1/orders/partial-cancel`
 - Демо: `ORD-1006` (paid, 3 позиции) — полная/частичная отмена; `ORD-1002`/`ORD-1005` — полная; `ORD-1001` — отказ
 
+## Итерация 7 (FAQ + LLM)
+
+- Knowledge base в PostgreSQL (10 демо-статей) + идемпотентный сид
+- Keyword-поиск и `POST /faq/v1/ask` (API key); при low confidence — эскалация к оператору
+- Опциональный LLM (`LLM_FAQ_ENABLED=true`): OpenAI-compatible; без ключа — MockLlm по KB
+- Admin CRUD: `/admin/v1/faq/articles` (HTTP Basic: `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASSWORD`)
+- В боте: «FAQ» / `/faq` → темы или свободный вопрос
+
 ## Итерации
 
 См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).

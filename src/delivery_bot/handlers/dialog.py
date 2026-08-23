@@ -12,6 +12,7 @@ from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
 from delivery_bot.logging_setup import get_logger
 from delivery_bot.services.courier import CourierService
+from delivery_bot.services.faq import FaqService
 from delivery_bot.services.order_cancel import OrderCancelService
 from delivery_bot.services.order_change import OrderChangeService
 from delivery_bot.services.order_status import OrderStatusService
@@ -39,6 +40,7 @@ async def _resolve_response(
     courier_service: CourierService,
     change_service: OrderChangeService,
     cancel_service: OrderCancelService,
+    faq_service: FaqService,
 ) -> DialogResponse:
     if response.delegate_status:
         if response.force_new_status:
@@ -51,6 +53,8 @@ async def _resolve_response(
         return await change_service.start(session)
     if response.delegate_cancel:
         return await cancel_service.start(session)
+    if response.delegate_faq:
+        return await faq_service.start(session, query=response.faq_query)
     return response
 
 
@@ -63,6 +67,7 @@ async def on_command(
     courier_service: CourierService,
     change_service: OrderChangeService,
     cancel_service: OrderCancelService,
+    faq_service: FaqService,
 ) -> None:
     text = message.text or ""
     command = text.split()[0] if text else ""
@@ -75,6 +80,7 @@ async def on_command(
         courier_service,
         change_service,
         cancel_service,
+        faq_service,
     )
     await message.answer(response.text, reply_markup=response.reply_markup)
 
@@ -88,6 +94,7 @@ async def on_text(
     courier_service: CourierService,
     change_service: OrderChangeService,
     cancel_service: OrderCancelService,
+    faq_service: FaqService,
 ) -> None:
     if dialog_session.state in _STATUS_INPUT_STATES:
         response = await status_service.handle_input(
@@ -121,8 +128,21 @@ async def on_text(
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
+    if dialog_session.state == DialogState.FAQ:
+        response = await faq_service.handle_input(
+            dialog_session, message.text or ""
+        )
+        await message.answer(response.text, reply_markup=response.reply_markup)
+        return
+
     match = dialog_manager.matcher.match_text(message.text or "")
     response = dialog_manager.handle_intent(dialog_session, match)
+    if response.delegate_faq and match.source == "keyword":
+        response = DialogResponse(
+            text="",
+            delegate_faq=True,
+            faq_query=message.text,
+        )
     response = await _resolve_response(
         dialog_session,
         response,
@@ -130,6 +150,7 @@ async def on_text(
         courier_service,
         change_service,
         cancel_service,
+        faq_service,
     )
     await message.answer(response.text, reply_markup=response.reply_markup)
 
@@ -176,6 +197,20 @@ async def on_cancel_callback(
         await query.message.answer(response.text, reply_markup=response.reply_markup)
 
 
+@router.callback_query(F.data.startswith("faq:"))
+async def on_faq_callback(
+    query: CallbackQuery,
+    dialog_session: DialogSession,
+    faq_service: FaqService,
+) -> None:
+    response = await faq_service.handle_callback(
+        dialog_session, query.data or ""
+    )
+    await query.answer()
+    if query.message:
+        await query.message.answer(response.text, reply_markup=response.reply_markup)
+
+
 @router.callback_query(F.data.startswith("consent:"))
 @router.callback_query(F.data.startswith("menu:"))
 @router.callback_query(F.data.startswith("session:"))
@@ -187,6 +222,7 @@ async def on_callback(
     courier_service: CourierService,
     change_service: OrderChangeService,
     cancel_service: OrderCancelService,
+    faq_service: FaqService,
 ) -> None:
     data = query.data or ""
     match = dialog_manager.matcher.match_callback(data)
@@ -200,6 +236,7 @@ async def on_callback(
         courier_service,
         change_service,
         cancel_service,
+        faq_service,
     )
     await query.answer()
     if query.message:

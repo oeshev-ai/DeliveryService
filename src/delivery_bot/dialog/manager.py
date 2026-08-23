@@ -18,7 +18,6 @@ from delivery_bot.logging_setup import get_logger
 logger = get_logger(__name__)
 
 _COMING_SOON_INTENTS = {
-    Intent.FAQ,
     Intent.CLAIM,
     Intent.REVIEW,
     Intent.REORDER,
@@ -37,6 +36,8 @@ class DialogResponse:
     delegate_courier: bool = False
     delegate_change: bool = False
     delegate_cancel: bool = False
+    delegate_faq: bool = False
+    faq_query: str | None = None
 
 
 class DialogManager:
@@ -112,6 +113,9 @@ class DialogManager:
 
         if match.intent == Intent.CANCEL:
             return DialogResponse(text="", delegate_cancel=True)
+
+        if match.intent == Intent.FAQ:
+            return DialogResponse(text="", delegate_faq=True)
 
         if match.intent == Intent.HELP:
             return DialogResponse(

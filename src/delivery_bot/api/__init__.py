@@ -11,19 +11,23 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from delivery_bot import __version__
+from delivery_bot.api.admin_faq_routes import router as admin_faq_router
 from delivery_bot.api.cancel_routes import router as cancel_router
 from delivery_bot.api.change_routes import router as change_router
+from delivery_bot.api.faq_routes import router as faq_router
 from delivery_bot.api.oms_routes import router as oms_router
 from delivery_bot.api.tms_routes import router as tms_router
 from delivery_bot.api.webapp_routes import router as webapp_router
 from delivery_bot.config import get_settings
 from delivery_bot.db.seed import seed_orders
+from delivery_bot.db.seed_faq import seed_faq
 from delivery_bot.db.session import (
     create_engine,
     create_session_factory,
     init_db,
     session_scope,
 )
+from delivery_bot.integrations.llm import LlmClient, MockLlmClient
 from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.redis_client import create_redis
 
@@ -48,6 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await init_db(engine)
         async with session_scope(factory) as session:
             await seed_orders(session)
+            await seed_faq(session)
         app.state.db_ready = True
         logger.info("api_db_ready")
     except Exception:
@@ -56,8 +61,31 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine = engine
     app.state.session_factory = factory
     app.state.redis = redis
+
+    llm: LlmClient | None = None
+    if settings.llm_faq_enabled:
+        if settings.llm_api_key:
+            llm = LlmClient(
+                api_key=settings.llm_api_key,
+                base_url=settings.llm_base_url or "https://api.openai.com/v1",
+                model=settings.llm_model,
+                mock_latency_ms=settings.llm_mock_latency_ms,
+            )
+        else:
+            llm = MockLlmClient(mock_latency_ms=settings.llm_mock_latency_ms)
+            logger.info("llm_faq_using_mock", reason="no_api_key")
+        await llm.start()
+        logger.info(
+            "llm_faq_enabled",
+            model=settings.llm_model,
+            mock=isinstance(llm, MockLlmClient),
+        )
+    app.state.llm = llm
+
     logger.info("api_started", env=settings.app_env)
     yield
+    if llm is not None:
+        await llm.aclose()
     await redis.aclose()
     await engine.dispose()
     logger.info("api_stopped")
@@ -80,6 +108,8 @@ def create_api_app(*, enable_lifespan: bool = True) -> FastAPI:
     app.include_router(tms_router)
     app.include_router(change_router)
     app.include_router(cancel_router)
+    app.include_router(faq_router)
+    app.include_router(admin_faq_router)
     app.include_router(webapp_router)
 
     static_dir = _webapp_static_dir()

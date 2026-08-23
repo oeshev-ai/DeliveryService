@@ -13,6 +13,7 @@ from delivery_bot.config import get_settings
 from delivery_bot.dialog import AttemptLimiter, DialogManager, RedisSessionStore
 from delivery_bot.handlers import setup_routers
 from delivery_bot.health import start_health_server
+from delivery_bot.integrations.faq.client import FaqClient
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient
 from delivery_bot.integrations.tms import MockTmsService
@@ -20,6 +21,7 @@ from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
 from delivery_bot.redis_client import create_redis, ping_redis
 from delivery_bot.services.courier import CourierService
+from delivery_bot.services.faq import FaqService
 from delivery_bot.services.order_cancel import OrderCancelService
 from delivery_bot.services.order_change import OrderChangeService
 from delivery_bot.services.order_status import OrderStatusService
@@ -85,6 +87,13 @@ async def _run() -> None:
     )
     change_service = OrderChangeService(oms, status_cache)
     cancel_service = OrderCancelService(oms, status_cache)
+    faq_client = FaqClient(
+        settings.oms_base_url,
+        settings.api_key,
+        timeout=max(5.0, settings.oms_timeout_seconds + 5.0),
+    )
+    await faq_client.start()
+    faq_service = FaqService(faq_client)
     dialog_manager = DialogManager()
 
     bot = Bot(
@@ -97,6 +106,7 @@ async def _run() -> None:
     dp["courier_service"] = courier_service
     dp["change_service"] = change_service
     dp["cancel_service"] = cancel_service
+    dp["faq_service"] = faq_service
     dp["attempt_limiter"] = attempt_limiter
     dp["redis"] = redis
     dp.update.middleware(DialogSessionMiddleware(session_store))
@@ -114,6 +124,7 @@ async def _run() -> None:
         health_port=settings.health_port,
         oms_base_url=settings.oms_base_url,
         webapp_url=settings.telegram_webapp_url,
+        llm_faq=settings.llm_faq_enabled,
     )
 
     try:
@@ -122,6 +133,7 @@ async def _run() -> None:
         await health_runner.cleanup()
         await bot.session.close()
         await oms.aclose()
+        await faq_client.aclose()
         await redis.aclose()
         logger.info("bot_stopped")
 

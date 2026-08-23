@@ -44,8 +44,20 @@ def test_coming_soon_after_consent() -> None:
         consent_accepted=True,
         state=DialogState.MAIN_MENU,
     )
-    resp = mgr.handle_intent(session, _match(Intent.FAQ))
+    resp = mgr.handle_intent(session, _match(Intent.CLAIM))
     assert "следующ" in resp.text.lower() or "итерац" in resp.text.lower()
+
+
+def test_faq_delegates_to_service() -> None:
+    mgr = DialogManager()
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
+    resp = mgr.handle_intent(session, _match(Intent.FAQ))
+    assert resp.delegate_faq is True
 
 
 def test_cancel_delegates_to_service() -> None:
