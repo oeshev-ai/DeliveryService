@@ -13,9 +13,12 @@ from delivery_bot.config import get_settings
 from delivery_bot.dialog import AttemptLimiter, DialogManager, RedisSessionStore
 from delivery_bot.handlers import setup_routers
 from delivery_bot.health import start_health_server
+from delivery_bot.integrations.oms.cache import OrderStatusCache
+from delivery_bot.integrations.oms.client import OmsClient
 from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
 from delivery_bot.redis_client import create_redis, ping_redis
+from delivery_bot.services.order_status import OrderStatusService
 
 
 async def _run() -> None:
@@ -49,6 +52,16 @@ async def _run() -> None:
         window_seconds=settings.verify_attempt_window_seconds,
         block_seconds=settings.verify_block_seconds,
     )
+    oms = OmsClient(
+        settings.oms_base_url,
+        settings.api_key,
+        timeout=settings.oms_timeout_seconds,
+    )
+    await oms.start()
+    status_cache = OrderStatusCache(
+        redis, ttl_seconds=settings.status_cache_ttl_seconds
+    )
+    status_service = OrderStatusService(oms, status_cache, attempt_limiter)
     dialog_manager = DialogManager()
 
     bot = Bot(
@@ -57,6 +70,7 @@ async def _run() -> None:
     )
     dp = Dispatcher()
     dp["dialog_manager"] = dialog_manager
+    dp["status_service"] = status_service
     dp["attempt_limiter"] = attempt_limiter
     dp["redis"] = redis
     dp.update.middleware(DialogSessionMiddleware(session_store))
@@ -72,7 +86,7 @@ async def _run() -> None:
         "bot_starting",
         env=settings.app_env,
         health_port=settings.health_port,
-        session_ttl=settings.session_ttl_seconds,
+        oms_base_url=settings.oms_base_url,
     )
 
     try:
@@ -80,6 +94,7 @@ async def _run() -> None:
     finally:
         await health_runner.cleanup()
         await bot.session.close()
+        await oms.aclose()
         await redis.aclose()
         logger.info("bot_stopped")
 

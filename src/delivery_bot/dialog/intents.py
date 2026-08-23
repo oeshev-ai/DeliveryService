@@ -68,6 +68,7 @@ _CALLBACK_MAP: dict[str, Intent] = {
     "consent:decline": Intent.CONSENT_DECLINE,
     "menu:main": Intent.MENU,
     "menu:status": Intent.STATUS,
+    "menu:status_new": Intent.STATUS,
     "menu:courier": Intent.COURIER,
     "menu:change": Intent.CHANGE,
     "menu:cancel": Intent.CANCEL,

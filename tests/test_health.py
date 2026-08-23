@@ -51,7 +51,7 @@ async def test_bot_ready_with_redis_ok() -> None:
 
 
 def test_api_health_ok() -> None:
-    client = FastAPITestClient(create_api_app())
+    client = FastAPITestClient(create_api_app(enable_lifespan=False))
     resp = client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["service"] == "api"

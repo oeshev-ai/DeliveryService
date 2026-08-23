@@ -17,9 +17,7 @@ from delivery_bot.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
-# Сценарии, ещё не реализованные полностью (итерация 1 — заглушка)
 _COMING_SOON_INTENTS = {
-    Intent.STATUS,
     Intent.COURIER,
     Intent.CHANGE,
     Intent.CANCEL,
@@ -37,6 +35,9 @@ class DialogResponse:
     text: str
     reply_markup: object | None = None
     require_consent: bool = False
+    # Если True — handler должен делегировать в OrderStatusService
+    delegate_status: bool = False
+    force_new_status: bool = False
 
 
 class DialogManager:
@@ -53,6 +54,8 @@ class DialogManager:
         self,
         session: DialogSession,
         match: IntentMatch,
+        *,
+        callback_data: str | None = None,
     ) -> DialogResponse:
         """Обрабатывает распознанное намерение и обновляет ``session``."""
         session.last_intent = match.intent.value
@@ -65,7 +68,6 @@ class DialogManager:
             confidence=match.confidence,
         )
 
-        # Истекшая сессия — сначала предложить продолжить
         if session.state == DialogState.SESSION_EXPIRED and match.intent != Intent.CONTINUE:
             if match.intent in {Intent.START, Intent.CONSENT_ACCEPT}:
                 return self._handle_start_or_consent(session, match)
@@ -86,7 +88,6 @@ class DialogManager:
         if match.intent == Intent.CONSENT_DECLINE:
             return self._decline_consent(session)
 
-        # Без согласия — только help/start
         if not session.consent_accepted:
             if match.intent == Intent.HELP:
                 return DialogResponse(text=texts.HELP_TEXT)
@@ -97,38 +98,49 @@ class DialogManager:
                 require_consent=True,
             )
 
+        if match.intent == Intent.STATUS:
+            if callback_data == "menu:status_new":
+                session.context.pop("verified_order_id", None)
+                session.context.pop("pending_order_id", None)
+                return DialogResponse(text="", delegate_status=True, force_new_status=True)
+            return DialogResponse(text="", delegate_status=True)
+
         if match.intent == Intent.HELP:
             return DialogResponse(
                 text=texts.HELP_TEXT,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=self._menu(session),
             )
 
         if match.intent == Intent.MENU:
             session.state = DialogState.MAIN_MENU
             return DialogResponse(
                 text=texts.MAIN_MENU_TEXT,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=self._menu(session),
             )
 
         if match.intent == Intent.OPERATOR:
             session.state = DialogState.ESCALATED
             return DialogResponse(
                 text=texts.OPERATOR_STUB_TEXT,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=self._menu(session),
             )
 
         if match.intent in _COMING_SOON_INTENTS:
             session.state = DialogState.MAIN_MENU
             return DialogResponse(
                 text=texts.COMING_SOON_TEXT,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=self._menu(session),
             )
 
         session.state = DialogState.MAIN_MENU
         return DialogResponse(
             text=texts.UNKNOWN_TEXT,
-            reply_markup=main_menu_keyboard(),
+            reply_markup=self._menu(session),
         )
+
+    def _menu(self, session: DialogSession):
+        active = session.context.get("verified_order_id")
+        return main_menu_keyboard(active_order_id=str(active) if active else None)
 
     def _handle_start_or_consent(
         self,
@@ -144,7 +156,7 @@ class DialogManager:
             session.state = DialogState.MAIN_MENU
             return DialogResponse(
                 text=texts.WELCOME_AFTER_CONSENT,
-                reply_markup=main_menu_keyboard(),
+                reply_markup=self._menu(session),
             )
         session.state = DialogState.AWAITING_CONSENT
         return DialogResponse(
@@ -158,7 +170,7 @@ class DialogManager:
         session.state = DialogState.MAIN_MENU
         return DialogResponse(
             text=texts.WELCOME_AFTER_CONSENT,
-            reply_markup=main_menu_keyboard(),
+            reply_markup=self._menu(session),
         )
 
     def _decline_consent(self, session: DialogSession) -> DialogResponse:
@@ -177,5 +189,5 @@ class DialogManager:
         session.state = DialogState.MAIN_MENU
         return DialogResponse(
             text=texts.MAIN_MENU_TEXT,
-            reply_markup=main_menu_keyboard(),
+            reply_markup=self._menu(session),
         )
