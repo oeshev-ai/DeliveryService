@@ -13,18 +13,24 @@ from delivery_bot.config import get_settings
 from delivery_bot.dialog import AttemptLimiter, DialogManager, RedisSessionStore
 from delivery_bot.handlers import setup_routers
 from delivery_bot.health import start_health_server
+from delivery_bot.integrations.crm.client import CrmClient
 from delivery_bot.integrations.faq.client import FaqClient
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient
+from delivery_bot.integrations.oms.post_delivery_client import PostDeliveryClient
 from delivery_bot.integrations.tms import MockTmsService
 from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
 from delivery_bot.redis_client import create_redis, ping_redis
+from delivery_bot.services.claim import ClaimService
 from delivery_bot.services.courier import CourierService
+from delivery_bot.services.escalation import EscalationService
 from delivery_bot.services.faq import FaqService
 from delivery_bot.services.order_cancel import OrderCancelService
 from delivery_bot.services.order_change import OrderChangeService
 from delivery_bot.services.order_status import OrderStatusService
+from delivery_bot.services.reorder import ReorderService
+from delivery_bot.services.review import ReviewService
 from delivery_bot.webapp.bindings import WebAppBindingStore
 
 
@@ -65,6 +71,25 @@ async def _run() -> None:
         timeout=settings.oms_timeout_seconds,
     )
     await oms.start()
+    post_delivery = PostDeliveryClient(
+        settings.oms_base_url,
+        settings.api_key,
+        timeout=max(5.0, settings.oms_timeout_seconds + 5.0),
+    )
+    await post_delivery.start()
+    faq_client = FaqClient(
+        settings.oms_base_url,
+        settings.api_key,
+        timeout=max(5.0, settings.oms_timeout_seconds + 5.0),
+    )
+    await faq_client.start()
+    crm_client = CrmClient(
+        settings.oms_base_url,
+        settings.api_key,
+        timeout=max(5.0, settings.oms_timeout_seconds + 5.0),
+    )
+    await crm_client.start()
+
     status_cache = OrderStatusCache(
         redis, ttl_seconds=settings.status_cache_ttl_seconds
     )
@@ -72,12 +97,14 @@ async def _run() -> None:
         redis, ttl_seconds=settings.webapp_binding_ttl_seconds
     )
     tms = MockTmsService()
+    review_service = ReviewService(oms, post_delivery, status_cache)
     status_service = OrderStatusService(
         oms,
         status_cache,
         attempt_limiter,
         bindings=bindings,
         webapp_url=settings.telegram_webapp_url,
+        review_service=review_service,
     )
     courier_service = CourierService(
         oms,
@@ -87,13 +114,10 @@ async def _run() -> None:
     )
     change_service = OrderChangeService(oms, status_cache)
     cancel_service = OrderCancelService(oms, status_cache)
-    faq_client = FaqClient(
-        settings.oms_base_url,
-        settings.api_key,
-        timeout=max(5.0, settings.oms_timeout_seconds + 5.0),
-    )
-    await faq_client.start()
     faq_service = FaqService(faq_client)
+    claim_service = ClaimService(oms, post_delivery, status_cache)
+    reorder_service = ReorderService(oms, post_delivery, status_cache)
+    escalation_service = EscalationService(crm_client)
     dialog_manager = DialogManager()
 
     bot = Bot(
@@ -107,6 +131,10 @@ async def _run() -> None:
     dp["change_service"] = change_service
     dp["cancel_service"] = cancel_service
     dp["faq_service"] = faq_service
+    dp["claim_service"] = claim_service
+    dp["review_service"] = review_service
+    dp["reorder_service"] = reorder_service
+    dp["escalation_service"] = escalation_service
     dp["attempt_limiter"] = attempt_limiter
     dp["redis"] = redis
     dp.update.middleware(DialogSessionMiddleware(session_store))
@@ -133,7 +161,9 @@ async def _run() -> None:
         await health_runner.cleanup()
         await bot.session.close()
         await oms.aclose()
+        await post_delivery.aclose()
         await faq_client.aclose()
+        await crm_client.aclose()
         await redis.aclose()
         logger.info("bot_stopped")
 

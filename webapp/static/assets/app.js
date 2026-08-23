@@ -21,7 +21,7 @@
     ""
   ).toUpperCase();
   const requestedTab = params.get("tab") || hashParams.get("tab");
-  let activeTab = requestedTab === "map" ? "map" : "status";
+  let activeTab = requestedTab === "map" ? "map" : requestedTab === "history" ? "history" : "status";
 
   const el = {
     tabs: document.getElementById("tabs"),
@@ -29,6 +29,8 @@
     error: document.getElementById("state-error"),
     panelStatus: document.getElementById("panel-status"),
     panelMap: document.getElementById("panel-map"),
+    panelHistory: document.getElementById("panel-history"),
+    historyList: document.getElementById("history-list"),
     errorText: document.getElementById("error-text"),
     retry: document.getElementById("btn-retry"),
     orderId: document.getElementById("order-id"),
@@ -64,6 +66,7 @@
     if (!ok) {
       el.panelStatus.hidden = true;
       el.panelMap.hidden = true;
+      el.panelHistory.hidden = true;
       return;
     }
     // Не сбрасываем activeTab при loading/error — иначе tab=map теряется
@@ -71,7 +74,7 @@
   }
 
   function applyTab(tab) {
-    if (tab === "map" || tab === "status") {
+    if (tab === "map" || tab === "status" || tab === "history") {
       activeTab = tab;
     }
     document.querySelectorAll(".tab").forEach((btn) => {
@@ -79,11 +82,48 @@
     });
     el.panelStatus.hidden = activeTab !== "status";
     el.panelMap.hidden = activeTab !== "map";
+    el.panelHistory.hidden = activeTab !== "history";
     if (activeTab === "map" && lastData) {
       renderMap(lastData).then(() => {
         if (map) setTimeout(() => map.invalidateSize(), 50);
         if (ymap) setTimeout(() => ymap.container.fitToViewport(), 50);
       });
+    }
+    if (activeTab === "history") {
+      loadHistory();
+    }
+  }
+
+  async function loadHistory() {
+    el.historyList.innerHTML = "<p class=\"muted\">Загрузка…</p>";
+    try {
+      const resp = await fetch(`${apiBase()}/history`, { headers: authHeaders() });
+      if (!resp.ok) throw new Error(`Ошибка ${resp.status}`);
+      const items = await resp.json();
+      if (!items.length) {
+        el.historyList.innerHTML = "<p class=\"muted\">История пуста. Подтвердите заказ в боте.</p>";
+        return;
+      }
+      el.historyList.innerHTML = items
+        .map(
+          (o) =>
+            `<article class="history-card" data-order="${o.id}">` +
+            `<strong>${o.id}</strong> · ${o.status_label}<br>` +
+            `<span class="muted">${o.delivery_slot || "—"} · ${o.total_amount} ₽</span>` +
+            (o.can_reorder ? `<br><span class="tag">можно повторить</span>` : "") +
+            (o.can_review ? `<br><span class="tag">можно оценить</span>` : "") +
+            `</article>`
+        )
+        .join("");
+      el.historyList.querySelectorAll(".history-card").forEach((card) => {
+        card.addEventListener("click", () => {
+          const oid = card.dataset.order;
+          if (oid) window.location.search = `?order_id=${oid}`;
+          window.location.reload();
+        });
+      });
+    } catch (err) {
+      el.historyList.innerHTML = `<p class="muted">${err?.message || "Не удалось загрузить историю"}</p>`;
     }
   }
 

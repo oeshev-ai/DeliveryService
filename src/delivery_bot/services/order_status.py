@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from delivery_bot.dialog.limits import AttemptLimiter
 from delivery_bot.dialog.manager import DialogResponse
@@ -25,6 +26,9 @@ from delivery_bot.services.status_formatter import (
 )
 from delivery_bot.webapp.bindings import WebAppBindingStore
 
+if TYPE_CHECKING:
+    from delivery_bot.services.review import ReviewService
+
 logger = get_logger(__name__)
 
 VERIFY_SCOPE = "verify"
@@ -42,12 +46,14 @@ class OrderStatusService:
         *,
         bindings: WebAppBindingStore | None = None,
         webapp_url: str | None = None,
+        review_service: ReviewService | None = None,
     ) -> None:
         self._oms = oms
         self._cache = cache
         self._limiter = limiter
         self._bindings = bindings
         self._webapp_url = webapp_url
+        self._review = review_service
 
     def _limit_subject(self, session: DialogSession) -> str:
         return f"{session.channel}:{session.user_id}"
@@ -226,20 +232,44 @@ class OrderStatusService:
                     "\n\nДругие заказы с этим телефоном:\n"
                     + format_orders_list(siblings)
                 )
-                return DialogResponse(
-                    text=format_order_status(order) + extras_note,
-                    reply_markup=order_list_keyboard(
-                        [s.id for s in siblings],
-                        active_order_id=order.id,
-                        webapp_url=self._webapp_url,
+                return await self._with_review_offer(
+                    session,
+                    order.id,
+                    DialogResponse(
+                        text=format_order_status(order) + extras_note,
+                        reply_markup=order_list_keyboard(
+                            [s.id for s in siblings],
+                            active_order_id=order.id,
+                            webapp_url=self._webapp_url,
+                        ),
                     ),
                 )
         except OmsError:
             logger.info("oms_list_skipped_after_verify", order_id=order.id)
 
+        return await self._with_review_offer(
+            session,
+            order.id,
+            DialogResponse(
+                text=format_order_status(order) + self._status_footer(),
+                reply_markup=self._status_markup(order.id),
+            ),
+        )
+
+    async def _with_review_offer(
+        self,
+        session: DialogSession,
+        order_id: str,
+        response: DialogResponse,
+    ) -> DialogResponse:
+        if self._review is None:
+            return response
+        offer = await self._review.offer_for_order(session, order_id)
+        if offer is None:
+            return response
         return DialogResponse(
-            text=format_order_status(order) + self._status_footer(),
-            reply_markup=self._status_markup(order.id),
+            text=response.text + "\n\n" + offer.text,
+            reply_markup=offer.reply_markup or response.reply_markup,
         )
 
     async def _show_order(self, session: DialogSession, order_id: str) -> DialogResponse:
@@ -249,9 +279,13 @@ class OrderStatusService:
             last4 = session.context.get("phone_last4")
             if last4:
                 await self._grant_webapp_access(session, cached.id, str(last4))
-            return DialogResponse(
-                text=format_order_status(cached) + self._status_footer(),
-                reply_markup=self._status_markup(cached.id),
+            return await self._with_review_offer(
+                session,
+                cached.id,
+                DialogResponse(
+                    text=format_order_status(cached) + self._status_footer(),
+                    reply_markup=self._status_markup(cached.id),
+                ),
             )
 
         last4 = session.context.get("phone_last4")
@@ -264,9 +298,14 @@ class OrderStatusService:
                     await self._grant_webapp_access(
                         session, result.order.id, str(last4)
                     )
-                    return DialogResponse(
-                        text=format_order_status(result.order) + self._status_footer(),
-                        reply_markup=self._status_markup(result.order.id),
+                    return await self._with_review_offer(
+                        session,
+                        result.order.id,
+                        DialogResponse(
+                            text=format_order_status(result.order)
+                            + self._status_footer(),
+                            reply_markup=self._status_markup(result.order.id),
+                        ),
                     )
             except OmsError:
                 pass

@@ -17,11 +17,7 @@ from delivery_bot.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
-_COMING_SOON_INTENTS = {
-    Intent.CLAIM,
-    Intent.REVIEW,
-    Intent.REORDER,
-}
+_COMING_SOON_INTENTS: set[Intent] = set()
 
 
 @dataclass(slots=True)
@@ -38,6 +34,10 @@ class DialogResponse:
     delegate_cancel: bool = False
     delegate_faq: bool = False
     faq_query: str | None = None
+    delegate_claim: bool = False
+    delegate_review: bool = False
+    delegate_reorder: bool = False
+    delegate_escalation: bool = False
 
 
 class DialogManager:
@@ -117,6 +117,15 @@ class DialogManager:
         if match.intent == Intent.FAQ:
             return DialogResponse(text="", delegate_faq=True)
 
+        if match.intent == Intent.CLAIM:
+            return DialogResponse(text="", delegate_claim=True)
+
+        if match.intent == Intent.REVIEW:
+            return DialogResponse(text="", delegate_review=True)
+
+        if match.intent == Intent.REORDER:
+            return DialogResponse(text="", delegate_reorder=True)
+
         if match.intent == Intent.HELP:
             return DialogResponse(
                 text=texts.HELP_TEXT,
@@ -131,18 +140,12 @@ class DialogManager:
             )
 
         if match.intent == Intent.OPERATOR:
-            session.state = DialogState.ESCALATED
-            session.context["escalation_reason"] = session.last_intent or "operator"
-            return DialogResponse(
-                text=texts.OPERATOR_STUB_TEXT,
-                reply_markup=main_menu_keyboard(
-                    active_order_id=(
-                        str(session.context["verified_order_id"])
-                        if session.context.get("verified_order_id")
-                        else None
-                    )
-                ),
+            session.context["escalation_reason"] = (
+                session.context.get("escalation_reason")
+                or session.last_intent
+                or "operator"
             )
+            return DialogResponse(text="", delegate_escalation=True)
 
         if match.intent in _COMING_SOON_INTENTS:
             session.state = DialogState.MAIN_MENU

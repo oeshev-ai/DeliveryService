@@ -44,8 +44,56 @@ def test_coming_soon_after_consent() -> None:
         consent_accepted=True,
         state=DialogState.MAIN_MENU,
     )
+    resp = mgr.handle_intent(session, _match(Intent.UNKNOWN))
+    assert "не понял" in resp.text.lower() or "меню" in resp.text.lower()
+
+
+def test_claim_delegates_to_service() -> None:
+    mgr = DialogManager()
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
     resp = mgr.handle_intent(session, _match(Intent.CLAIM))
-    assert "следующ" in resp.text.lower() or "итерац" in resp.text.lower()
+    assert resp.delegate_claim is True
+
+
+def test_review_delegates_to_service() -> None:
+    mgr = DialogManager()
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
+    resp = mgr.handle_intent(session, _match(Intent.REVIEW))
+    assert resp.delegate_review is True
+
+
+def test_operator_delegates_to_escalation() -> None:
+    mgr = DialogManager()
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
+    resp = mgr.handle_intent(session, _match(Intent.OPERATOR))
+    assert resp.delegate_escalation is True
+
+
+def test_reorder_delegates_to_service() -> None:
+    mgr = DialogManager()
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
+    resp = mgr.handle_intent(session, _match(Intent.REORDER))
+    assert resp.delegate_reorder is True
 
 
 def test_faq_delegates_to_service() -> None:

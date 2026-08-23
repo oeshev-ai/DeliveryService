@@ -26,6 +26,7 @@
       <nav class="tabs" id="tabs" hidden>
         <button type="button" class="tab is-active" data-tab="status">Статус</button>
         <button type="button" class="tab" data-tab="map">Карта</button>
+        <button type="button" class="tab" data-tab="history">История</button>
       </nav>
 
       <section id="state-loading" class="card" hidden>
@@ -85,6 +86,11 @@
         <p id="map-fallback" class="muted" hidden>
           Геолокация курьера временно недоступна. Показан адрес доставки и ETA из заказа.
         </p>
+      </section>
+
+      <section id="panel-history" class="card" hidden>
+        <p class="muted">Ваши заказы</p>
+        <div id="history-list" class="history-list"></div>
       </section>
     </main>
     <script

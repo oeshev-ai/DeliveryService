@@ -29,3 +29,15 @@ class WebAppOrderView(BaseModel):
     gps_available: bool = False
     tracking_message: str | None = None
     yandex_maps_api_key: str = ""
+    can_review: bool = False
+    review_rating: int | None = None
+
+
+class WebAppHistoryItem(BaseModel):
+    id: str
+    status: str
+    status_label: str
+    total_amount: Decimal
+    delivery_slot: str | None = None
+    can_reorder: bool = False
+

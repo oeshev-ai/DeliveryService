@@ -123,6 +123,7 @@ class FaqService:
 
     async def ask(self, session: DialogSession, question: str) -> DialogResponse:
         session.state = DialogState.FAQ
+        session.context["faq_last_question"] = question.strip()
         try:
             result = await self._faq.ask(question)
         except FaqError:
@@ -173,6 +174,9 @@ class FaqService:
 
         text = header + result.answer
         if result.escalate and result.ok:
+            faq_q = session.context.get("faq_last_question")
+            if faq_q:
+                session.context["escalation_reason"] = f"faq:{str(faq_q)[:120]}"
             text += (
                 "\n\nЕсли ответ неполный — выберите другую тему "
                 "или свяжитесь с оператором."

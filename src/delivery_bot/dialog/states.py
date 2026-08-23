@@ -36,4 +36,6 @@ class DialogState(StrEnum):
     CLAIM = "claim"
     REVIEW = "review"
     REORDER = "reorder"
-    ESCALATED = "escalated"
+    ESCALATION_AWAITING_DESCRIPTION = "escalation_awaiting_description"
+    OPERATOR_HANDOFF = "operator_handoff"
+    ESCALATED = "escalated"  # legacy alias, не используется в новых сценариях

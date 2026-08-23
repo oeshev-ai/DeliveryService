@@ -122,6 +122,22 @@ src/delivery_bot/
 - Admin CRUD: `/admin/v1/faq/articles` (HTTP Basic: `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASSWORD`)
 - В боте: «FAQ» / `/faq` → темы или свободный вопрос
 
+## Итерация 8 (претензии, отзывы, повтор)
+
+- **Претензия**: verified order + delivered + окно 14 дней; причины + текст → mock CRM
+- **Отзыв**: один раз после delivered (1–5 ⭐ + комментарий); пропуск → напоминание через ARQ worker
+- **Повтор заказа**: из истории по last4; недоступные позиции пропускаются
+- API: `/oms/v1/claims`, `/oms/v1/reviews`, `/oms/v1/orders/reorder`, `/webapp/v1/history`
+- Демо: `ORD-1004` (delivered, last4 `4567`) — претензия / отзыв / повтор
+
+## Итерация 9 (эскалация / CRM handoff)
+
+- Полный handoff: тикет в mock CRM с контекстом (заказ, FAQ, intent)
+- Operator takeover: сообщения клиента → CRM; ответы оператора → Telegram (ARQ worker)
+- API: `POST /crm/v1/tickets`, admin `/admin/v1/tickets/{id}/reply`
+- В боте: «Оператор» / кнопка из FAQ → описание → режим handoff
+- Демо ответа оператора: Basic auth admin + `POST .../tickets/{id}/reply`
+
 ## Итерации
 
 См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).

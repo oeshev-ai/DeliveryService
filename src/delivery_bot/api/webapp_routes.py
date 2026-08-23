@@ -10,11 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from delivery_bot.api.oms_routes import get_db_session
 from delivery_bot.config import Settings, get_settings
+from delivery_bot.integrations.oms.post_delivery_repository import PostDeliveryRepository
 from delivery_bot.integrations.oms.repository import OmsRepository
 from delivery_bot.integrations.tms.mock import MockTmsService
+from delivery_bot.services.order_policy import can_reorder, can_review
 from delivery_bot.webapp.bindings import WebAppBindingStore
 from delivery_bot.webapp.colors import status_color, status_label
-from delivery_bot.webapp.schemas import WebAppOrderView
+from delivery_bot.webapp.schemas import WebAppHistoryItem, WebAppOrderView
 from delivery_bot.webapp.telegram_auth import (
     TelegramInitDataError,
     TelegramWebAppUser,
@@ -97,6 +99,13 @@ async def get_webapp_order(
         eta_minutes=order.eta_minutes,
     )
 
+    review_repo = PostDeliveryRepository(session)
+    review = await review_repo.get_review(order.id, str(user.id))
+    can_rev = can_review(order.status) and (
+        review is None
+        or (review.rating is None and not review.skipped)
+    )
+
     return WebAppOrderView(
         id=order.id,
         status=order.status,
@@ -116,4 +125,45 @@ async def get_webapp_order(
         gps_available=point.gps_available,
         tracking_message=point.message,
         yandex_maps_api_key=settings.yandex_maps_api_key or "",
+        can_review=can_rev,
+        review_rating=review.rating if review else None,
     )
+
+
+@router.get("/history", response_model=list[WebAppHistoryItem])
+async def get_order_history(
+    user: TelegramWebAppUser = Depends(get_webapp_user),
+    session: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+    settings: Settings = Depends(get_settings),
+) -> list[WebAppHistoryItem]:
+    """Карусель истории заказов пользователя (по binding last4)."""
+    store = WebAppBindingStore(redis, ttl_seconds=settings.webapp_binding_ttl_seconds)
+    binding = await store.get(str(user.id))
+    if binding is None:
+        return []
+
+    repo = OmsRepository(session)
+    review_repo = PostDeliveryRepository(session)
+    orders = await repo.list_by_last4(binding.phone_last4, limit=12)
+    items: list[WebAppHistoryItem] = []
+    for summary in orders:
+        full = await repo.get_by_id(summary.id)
+        if full is None:
+            continue
+        review = await review_repo.get_review(full.id, str(user.id))
+        submitted = review is not None and (
+            review.rating is not None or review.skipped
+        )
+        items.append(
+            WebAppHistoryItem(
+                id=full.id,
+                status=full.status,
+                status_label=status_label(full.status),
+                total_amount=full.total_amount,
+                delivery_slot=full.delivery_slot,
+                can_reorder=can_reorder(full.status),
+                can_review=can_review(full.status) and not submitted,
+            )
+        )
+    return items

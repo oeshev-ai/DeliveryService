@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -105,6 +106,7 @@ def _demo_orders() -> list[OrderModel]:
             courier_name="Иван Петров",
             courier_phone="+79001112233",
             total_amount=Decimal("560.00"),
+            delivered_at=datetime.now(UTC) - timedelta(days=1),
             items=[
                 OrderItemModel(
                     name="Салат Цезарь",
@@ -184,3 +186,18 @@ async def seed_orders(session: AsyncSession) -> None:
         logger.info("seed_orders_done", added=added, total=len(samples))
     else:
         logger.info("seed_orders_skipped", reason="all_present", total=len(samples))
+    await _patch_delivered_timestamps(session)
+
+
+async def _patch_delivered_timestamps(session: AsyncSession) -> None:
+    """Проставляет delivered_at существующим доставленным заказам."""
+    recent = datetime.now(UTC) - timedelta(days=1)
+    for oid in ("ORD-1004",):
+        order = await session.get(OrderModel, oid)
+        if (
+            order is not None
+            and order.status == OrderStatus.DELIVERED.value
+            and order.delivered_at is None
+        ):
+            order.delivered_at = recent
+    await session.flush()

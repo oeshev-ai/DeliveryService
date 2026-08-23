@@ -11,14 +11,18 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from delivery_bot import __version__
+from delivery_bot.api.crm_routes import router as crm_router
+from delivery_bot.api.admin_crm_routes import router as admin_crm_router
 from delivery_bot.api.admin_faq_routes import router as admin_faq_router
 from delivery_bot.api.cancel_routes import router as cancel_router
 from delivery_bot.api.change_routes import router as change_router
+from delivery_bot.api.post_delivery_routes import router as post_delivery_router
 from delivery_bot.api.faq_routes import router as faq_router
 from delivery_bot.api.oms_routes import router as oms_router
 from delivery_bot.api.tms_routes import router as tms_router
 from delivery_bot.api.webapp_routes import router as webapp_router
 from delivery_bot.config import get_settings
+from delivery_bot.db.migrate import apply_schema_patches
 from delivery_bot.db.seed import seed_orders
 from delivery_bot.db.seed_faq import seed_faq
 from delivery_bot.db.session import (
@@ -50,6 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     redis = create_redis(settings)
     try:
         await init_db(engine)
+        await apply_schema_patches(engine)
         async with session_scope(factory) as session:
             await seed_orders(session)
             await seed_faq(session)
@@ -108,8 +113,11 @@ def create_api_app(*, enable_lifespan: bool = True) -> FastAPI:
     app.include_router(tms_router)
     app.include_router(change_router)
     app.include_router(cancel_router)
+    app.include_router(post_delivery_router)
     app.include_router(faq_router)
+    app.include_router(crm_router)
     app.include_router(admin_faq_router)
+    app.include_router(admin_crm_router)
     app.include_router(webapp_router)
 
     static_dir = _webapp_static_dir()

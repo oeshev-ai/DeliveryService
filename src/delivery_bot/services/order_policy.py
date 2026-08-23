@@ -69,6 +69,24 @@ def can_replace_items(status: OrderStatus | str) -> bool:
     return _as_status(status) in _PRE_COURIER
 
 
+def can_claim(status: OrderStatus | str) -> bool:
+    """True, если заказ доставлен и потенциально доступен для претензии."""
+    return _as_status(status) == OrderStatus.DELIVERED
+
+
+def can_reorder(status: OrderStatus | str) -> bool:
+    """True, если заказ можно повторить из истории."""
+    return _as_status(status) in {
+        OrderStatus.DELIVERED,
+        OrderStatus.CANCELLED,
+    }
+
+
+def can_review(status: OrderStatus | str) -> bool:
+    """True, если заказ доставлен и можно оставить отзыв."""
+    return _as_status(status) == OrderStatus.DELIVERED
+
+
 def address_change_denied_reason(status: OrderStatus | str) -> str:
     """Человекочитаемая причина отказа в смене адреса."""
     st = _as_status(status)

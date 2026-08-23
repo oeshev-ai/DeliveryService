@@ -71,7 +71,7 @@ services:
 
   worker:
     build: .
-    command: arq delivery_bot.worker.WorkerSettings
+    command: python -m delivery_bot.worker
     env_file:
       - .env
     environment:

@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_mock_latency_ms: int = 80
 
+    claim_window_days: int = 14
+    review_reminder_delay_seconds: int = 3600
+
 
 @lru_cache
 def get_settings() -> Settings:
