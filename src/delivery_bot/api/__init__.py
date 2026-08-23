@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from delivery_bot import __version__
+from delivery_bot.api.middleware import MetricsMiddleware, RequestContextMiddleware
 from delivery_bot.api.crm_routes import router as crm_router
 from delivery_bot.api.admin_crm_routes import router as admin_crm_router
 from delivery_bot.api.admin_faq_routes import router as admin_faq_router
@@ -33,6 +34,7 @@ from delivery_bot.db.session import (
 )
 from delivery_bot.integrations.llm import LlmClient, MockLlmClient
 from delivery_bot.logging_setup import get_logger, setup_logging
+from delivery_bot.observability.metrics import render_metrics, setup_metrics
 from delivery_bot.redis_client import create_redis
 
 logger = get_logger(__name__)
@@ -49,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Инициализация БД, Redis и сид демо-заказов."""
     settings = get_settings()
     setup_logging(settings)
+    setup_metrics()
     engine = create_engine(settings)
     factory = create_session_factory(engine)
     redis = create_redis(settings)
@@ -120,6 +123,9 @@ def create_api_app(*, enable_lifespan: bool = True) -> FastAPI:
     app.include_router(admin_crm_router)
     app.include_router(webapp_router)
 
+    app.add_middleware(MetricsMiddleware)
+    app.add_middleware(RequestContextMiddleware)
+
     static_dir = _webapp_static_dir()
     if static_dir.is_dir():
         app.mount("/ui", StaticFiles(directory=str(static_dir), html=True), name="ui")
@@ -158,6 +164,13 @@ def create_api_app(*, enable_lifespan: bool = True) -> FastAPI:
             "version": __version__,
             "checks": {"app": True, "postgres": db_ok, "redis": redis_ok},
         }
+
+    @app.get("/metrics")
+    async def metrics() -> Response:
+        body, content_type = render_metrics()
+        if not body:
+            return Response(status_code=404, content="metrics disabled")
+        return Response(content=body, media_type=content_type)
 
     return app
 

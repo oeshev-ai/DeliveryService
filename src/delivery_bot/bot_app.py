@@ -21,6 +21,7 @@ from delivery_bot.integrations.oms.post_delivery_client import PostDeliveryClien
 from delivery_bot.integrations.tms import MockTmsService
 from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
+from delivery_bot.observability.metrics import setup_metrics
 from delivery_bot.redis_client import create_redis, ping_redis
 from delivery_bot.services.claim import ClaimService
 from delivery_bot.services.courier import CourierService
@@ -37,6 +38,7 @@ from delivery_bot.webapp.bindings import WebAppBindingStore
 async def _run() -> None:
     settings = get_settings()
     setup_logging(settings)
+    setup_metrics()
     logger = get_logger(__name__)
 
     if not settings.telegram_bot_token or settings.telegram_bot_token.startswith(

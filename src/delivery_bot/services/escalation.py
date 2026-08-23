@@ -15,6 +15,7 @@ from delivery_bot.integrations.crm.schemas import (
     CreateEscalationTicketRequest,
 )
 from delivery_bot.logging_setup import get_logger
+from delivery_bot.observability.metrics import inc_escalation
 
 logger = get_logger(__name__)
 
@@ -169,6 +170,7 @@ class EscalationService:
             ticket_id=ticket.id,
             user_id=session.user_id,
         )
+        inc_escalation(reason)
         return DialogResponse(
             text=texts.OPERATOR_TICKET_CREATED.format(ticket_id=ticket.id),
             reply_markup=_handoff_keyboard(),

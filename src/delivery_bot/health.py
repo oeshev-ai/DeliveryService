@@ -7,6 +7,7 @@ from redis.asyncio import Redis
 
 from delivery_bot import __version__
 from delivery_bot.logging_setup import get_logger
+from delivery_bot.observability.metrics import render_metrics, setup_metrics
 from delivery_bot.redis_client import ping_redis
 
 logger = get_logger(__name__)
@@ -23,6 +24,14 @@ async def health_handler(request: web.Request) -> web.Response:
             "version": __version__,
         }
     )
+
+
+async def metrics_handler(request: web.Request) -> web.Response:
+    """Prometheus metrics для процесса бота."""
+    body, content_type = render_metrics()
+    if not body:
+        return web.Response(status=404, text="metrics disabled")
+    return web.Response(body=body, content_type=content_type)
 
 
 async def ready_handler(request: web.Request) -> web.Response:
@@ -48,6 +57,7 @@ def create_health_app(redis: Redis | None = None) -> web.Application:
     app[REDIS_KEY] = redis
     app.router.add_get("/health", health_handler)
     app.router.add_get("/ready", ready_handler)
+    app.router.add_get("/metrics", metrics_handler)
     return app
 
 

@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     claim_window_days: int = 14
     review_reminder_delay_seconds: int = 3600
 
+    metrics_enabled: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -7,7 +7,10 @@ import sys
 
 import structlog
 
+import structlog
+
 from delivery_bot.config import Settings
+from delivery_bot.security.pii import mask_pii_processor
 
 
 def setup_logging(settings: Settings) -> None:
@@ -23,6 +26,7 @@ def setup_logging(settings: Settings) -> None:
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
+        mask_pii_processor,
     ]
 
     if settings.log_json:

@@ -19,6 +19,7 @@ from delivery_bot.dialog.keyboards import (
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient, OmsError
 from delivery_bot.logging_setup import get_logger
+from delivery_bot.observability.metrics import inc_verify_attempt
 from delivery_bot.services.status_formatter import (
     format_order_status,
     format_orders_list,
@@ -199,6 +200,7 @@ class OrderStatusService:
             )
 
         if not result.ok or result.order is None:
+            inc_verify_attempt(success=False)
             hit = await self._limiter.hit(VERIFY_SCOPE, subject)
             if hit.is_blocked:
                 session.state = DialogState.MAIN_MENU
@@ -216,6 +218,7 @@ class OrderStatusService:
             )
 
         await self._limiter.reset(VERIFY_SCOPE, subject)
+        inc_verify_attempt(success=True)
         order = result.order
         await self._cache.set(order)
         session.context["verified_order_id"] = order.id

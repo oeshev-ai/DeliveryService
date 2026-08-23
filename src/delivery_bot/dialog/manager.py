@@ -14,6 +14,7 @@ from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
 from delivery_bot.dialog import texts
 from delivery_bot.logging_setup import get_logger
+from delivery_bot.observability.metrics import inc_bot_intent
 
 logger = get_logger(__name__)
 
@@ -59,6 +60,7 @@ class DialogManager:
     ) -> DialogResponse:
         """Обрабатывает распознанное намерение и обновляет ``session``."""
         session.last_intent = match.intent.value
+        inc_bot_intent(match.intent.value)
         logger.info(
             "dialog_intent",
             user_id=session.user_id,

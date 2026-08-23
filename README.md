@@ -138,6 +138,14 @@ src/delivery_bot/
 - В боте: «Оператор» / кнопка из FAQ → описание → режим handoff
 - Демо ответа оператора: Basic auth admin + `POST .../tickets/{id}/reply`
 
+## Итерация 10 (harden)
+
+- **PII masking** в structlog: телефоны, last4, токены, URL с паролями
+- **Prometheus**: `GET /metrics` (API `:8000`, bot health `:8081`) — HTTP, intents, verify, escalations
+- **X-Request-ID** на каждый запрос API
+- Скрипт ответа оператора с UTF-8: `python scripts/admin_reply.py 2 "Текст"`
+- Флаг `METRICS_ENABLED=false` отключает `/metrics`
+
 ## Итерации
 
 См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).
