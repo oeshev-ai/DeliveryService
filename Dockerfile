@@ -18,6 +18,7 @@ RUN pip install -r requirements.txt
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY tests ./tests
+COPY webapp ./webapp
 
 RUN pip install -e .
 

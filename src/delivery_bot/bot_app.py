@@ -19,6 +19,7 @@ from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
 from delivery_bot.redis_client import create_redis, ping_redis
 from delivery_bot.services.order_status import OrderStatusService
+from delivery_bot.webapp.bindings import WebAppBindingStore
 
 
 async def _run() -> None:
@@ -61,7 +62,16 @@ async def _run() -> None:
     status_cache = OrderStatusCache(
         redis, ttl_seconds=settings.status_cache_ttl_seconds
     )
-    status_service = OrderStatusService(oms, status_cache, attempt_limiter)
+    bindings = WebAppBindingStore(
+        redis, ttl_seconds=settings.webapp_binding_ttl_seconds
+    )
+    status_service = OrderStatusService(
+        oms,
+        status_cache,
+        attempt_limiter,
+        bindings=bindings,
+        webapp_url=settings.telegram_webapp_url,
+    )
     dialog_manager = DialogManager()
 
     bot = Bot(
@@ -87,6 +97,7 @@ async def _run() -> None:
         env=settings.app_env,
         health_port=settings.health_port,
         oms_base_url=settings.oms_base_url,
+        webapp_url=settings.telegram_webapp_url,
     )
 
     try:

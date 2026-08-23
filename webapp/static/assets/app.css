@@ -1,0 +1,157 @@
+:root {
+  --bg: #f3f1ec;
+  --bg-accent: #e7eef7;
+  --card: #ffffff;
+  --text: #1c2430;
+  --muted: #4b5563;
+  --line: #e5e7eb;
+  --brand: #0f766e;
+  --danger: #b91c1c;
+  --radius: 18px;
+  --shadow: 0 10px 30px rgba(28, 36, 48, 0.08);
+  --status: #9ca3af;
+  color-scheme: light;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #1c2430;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, var(--bg-accent), transparent 60%),
+    linear-gradient(180deg, #f7f5f1 0%, var(--bg) 100%);
+}
+
+.screen {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 20px 16px 32px;
+  color: #1c2430;
+}
+
+.brand__name {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #0f766e;
+}
+
+.brand__sub {
+  margin: 4px 0 18px;
+  color: #4b5563;
+}
+
+.card {
+  background: #ffffff;
+  color: #1c2430;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+}
+
+.card--error {
+  border-color: #fecaca;
+}
+
+.muted {
+  color: #4b5563;
+  margin: 0;
+}
+
+.status-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.status-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--status);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--status) 20%, transparent);
+  flex-shrink: 0;
+}
+
+.order-id {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #111827;
+}
+
+.status-label {
+  margin: 2px 0 0;
+  text-transform: capitalize;
+  color: #374151;
+}
+
+.eta {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ecfeff, #f0fdf4);
+  border: 1px solid #d1fae5;
+  color: #1c2430;
+}
+
+.eta__label {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.85rem;
+}
+
+.eta__value {
+  margin: 4px 0 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #065f46;
+}
+
+.meta {
+  margin: 16px 0 0;
+  display: grid;
+  gap: 12px;
+}
+
+.meta > div {
+  display: grid;
+  gap: 2px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.meta dt {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.meta dd {
+  margin: 0;
+  font-weight: 600;
+  color: #111827;
+}
+
+.btn {
+  margin-top: 12px;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #0f766e;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.card--error p {
+  margin: 0;
+  color: #b91c1c;
+}

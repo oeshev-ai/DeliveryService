@@ -84,6 +84,14 @@ src/delivery_bot/
 
 Демо-заказы: `ORD-1001`…`ORD-1005`, телефон `+79001234567` (last4=`4567`).
 
+## Итерация 3 (Telegram WebApp)
+
+- UI виджета статуса: `http://localhost:8000/ui/?order_id=ORD-1001`
+- API: `GET /webapp/v1/orders/{id}` (заголовок `X-Telegram-Init-Data`)
+- После верификации в боте — кнопка «Открыть виджет статуса»
+- Локальный просмотр без Telegram: `WEBAPP_DEV_BYPASS=true` + `?dev_user=1`
+- Для открытия Mini App с телефона нужен **HTTPS**-URL (`TELEGRAM_WEBAPP_URL`, ngrok/tunnel)
+
 ## Итерации
 
 См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).

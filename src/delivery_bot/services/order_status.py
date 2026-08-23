@@ -9,7 +9,12 @@ from delivery_bot.dialog.manager import DialogResponse
 from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
 from delivery_bot.dialog import texts
-from delivery_bot.dialog.keyboards import main_menu_keyboard, order_list_keyboard
+from delivery_bot.dialog.keyboards import (
+    main_menu_keyboard,
+    order_list_keyboard,
+    order_status_keyboard,
+    is_telegram_webapp_url,
+)
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient, OmsError
 from delivery_bot.logging_setup import get_logger
@@ -18,6 +23,7 @@ from delivery_bot.services.status_formatter import (
     format_orders_list,
     format_public_status,
 )
+from delivery_bot.webapp.bindings import WebAppBindingStore
 
 logger = get_logger(__name__)
 
@@ -33,13 +39,40 @@ class OrderStatusService:
         oms: OmsClient,
         cache: OrderStatusCache,
         limiter: AttemptLimiter,
+        *,
+        bindings: WebAppBindingStore | None = None,
+        webapp_url: str | None = None,
     ) -> None:
         self._oms = oms
         self._cache = cache
         self._limiter = limiter
+        self._bindings = bindings
+        self._webapp_url = webapp_url
 
     def _limit_subject(self, session: DialogSession) -> str:
         return f"{session.channel}:{session.user_id}"
+
+    def _status_markup(self, order_id: str):
+        return order_status_keyboard(order_id, webapp_url=self._webapp_url)
+
+    def _status_footer(self) -> str:
+        if is_telegram_webapp_url(self._webapp_url):
+            return "\n\nМожно открыть виджет статуса в Mini App 👇"
+        return (
+            "\n\nВиджет Mini App доступен после настройки "
+            "<code>TELEGRAM_WEBAPP_URL</code> на HTTPS (ngrok/tunnel)."
+        )
+
+    async def _grant_webapp_access(
+        self, session: DialogSession, order_id: str, phone_last4: str
+    ) -> None:
+        if self._bindings is None:
+            return
+        await self._bindings.grant(
+            session.user_id,
+            order_id=order_id,
+            phone_last4=phone_last4,
+        )
 
     async def start(self, session: DialogSession) -> DialogResponse:
         """Старт сценария статуса."""
@@ -84,7 +117,6 @@ class OrderStatusService:
 
         session.context["pending_order_id"] = order_id
 
-        # Публичный минимум без верификации (ТЗ: только «в пути»)
         try:
             public = await self._oms.get_public(order_id)
         except OmsError:
@@ -144,12 +176,13 @@ class OrderStatusService:
                 session.context["verified_order_id"] = cached.id
                 session.context["phone_last4"] = last4
                 session.state = DialogState.ORDER_STATUS
+                await self._grant_webapp_access(session, cached.id, last4)
                 return DialogResponse(
                     text=(
                         "OMS недоступен, показываю последний известный статус из кэша:\n\n"
                         + format_order_status(cached)
                     ),
-                    reply_markup=main_menu_keyboard(active_order_id=cached.id),
+                    reply_markup=self._status_markup(cached.id),
                 )
             return DialogResponse(
                 text=(
@@ -183,9 +216,8 @@ class OrderStatusService:
         session.context["phone_last4"] = last4
         session.context.pop("pending_order_id", None)
         session.state = DialogState.ORDER_STATUS
+        await self._grant_webapp_access(session, order.id, last4)
 
-        # Если на телефоне несколько заказов — предложим список для смены
-        extras_note = ""
         try:
             siblings = await self._oms.list_by_last4(last4)
             others = [s for s in siblings if s.id != order.id]
@@ -199,23 +231,27 @@ class OrderStatusService:
                     reply_markup=order_list_keyboard(
                         [s.id for s in siblings],
                         active_order_id=order.id,
+                        webapp_url=self._webapp_url,
                     ),
                 )
         except OmsError:
             logger.info("oms_list_skipped_after_verify", order_id=order.id)
 
         return DialogResponse(
-            text=format_order_status(order),
-            reply_markup=main_menu_keyboard(active_order_id=order.id),
+            text=format_order_status(order) + self._status_footer(),
+            reply_markup=self._status_markup(order.id),
         )
 
     async def _show_order(self, session: DialogSession, order_id: str) -> DialogResponse:
         cached = await self._cache.get(order_id)
         if cached is not None:
             session.state = DialogState.ORDER_STATUS
+            last4 = session.context.get("phone_last4")
+            if last4:
+                await self._grant_webapp_access(session, cached.id, str(last4))
             return DialogResponse(
-                text=format_order_status(cached),
-                reply_markup=main_menu_keyboard(active_order_id=cached.id),
+                text=format_order_status(cached) + self._status_footer(),
+                reply_markup=self._status_markup(cached.id),
             )
 
         last4 = session.context.get("phone_last4")
@@ -225,14 +261,16 @@ class OrderStatusService:
                 if result.ok and result.order:
                     await self._cache.set(result.order)
                     session.state = DialogState.ORDER_STATUS
+                    await self._grant_webapp_access(
+                        session, result.order.id, str(last4)
+                    )
                     return DialogResponse(
-                        text=format_order_status(result.order),
-                        reply_markup=main_menu_keyboard(active_order_id=result.order.id),
+                        text=format_order_status(result.order) + self._status_footer(),
+                        reply_markup=self._status_markup(result.order.id),
                     )
             except OmsError:
                 pass
 
-        # Нужна повторная верификация
         session.context["pending_order_id"] = order_id
         session.state = DialogState.AWAITING_PHONE_LAST4
         return DialogResponse(
@@ -246,7 +284,6 @@ def _normalize_order_id(text: str) -> str | None:
     raw = text.strip().upper().replace(" ", "")
     match = _ORDER_ID_RE.match(raw)
     if not match:
-        # также принимаем уже полный ORD-1001
         if raw.startswith("ORD-") and raw[4:].isdigit():
             return raw
         return None

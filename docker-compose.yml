@@ -55,6 +55,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-delivery}:${POSTGRES_PASSWORD:-delivery_secret}@postgres:5432/${POSTGRES_DB:-delivery}
       REDIS_URL: redis://redis:6379/0
       OMS_BASE_URL: http://api:8000
+      TELEGRAM_WEBAPP_URL: ${TELEGRAM_WEBAPP_URL:-http://localhost:8000/ui}
       HEALTH_HOST: 0.0.0.0
       HEALTH_PORT: 8081
     ports:

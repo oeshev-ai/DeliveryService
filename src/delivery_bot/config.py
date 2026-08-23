@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     log_json: bool = True
 
     telegram_bot_token: str = Field(default="", description="Токен BotFather")
-    telegram_webapp_url: str = "http://localhost:8080"
+    telegram_webapp_url: str = "http://localhost:8000/ui"
 
     database_url: str = (
         "postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery"
@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     oms_base_url: str = "http://localhost:8000"
     oms_timeout_seconds: float = 3.0
     status_cache_ttl_seconds: int = 90
+
+    # WebApp
+    webapp_dev_bypass: bool = True
+    webapp_binding_ttl_seconds: int = 86_400
+    webapp_init_data_max_age_seconds: int = 86_400
 
     llm_faq_enabled: bool = False
     payment_mock: bool = True
