@@ -92,6 +92,14 @@ src/delivery_bot/
 - Локальный просмотр без Telegram: `WEBAPP_DEV_BYPASS=true` + `?dev_user=1`
 - Для открытия Mini App с телефона нужен **HTTPS**-URL (`TELEGRAM_WEBAPP_URL`, ngrok/tunnel)
 
+## Итерация 4 (курьер + карта)
+
+- Mock TMS: координаты курьера, движение к точке доставки
+- Сценарий «Курьер» в боте (ФИО, телефон, ETA, кнопка карты)
+- Вкладка «Карта» в Mini App (OpenStreetMap; `YANDEX_MAPS_API_KEY` — задел)
+- Без GPS: сообщение + адрес доставки на карте
+- API: `GET /oms/v1/orders/{id}/tracking`
+
 ## Итерации
 
 См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).

@@ -61,6 +61,10 @@ def test_webapp_order_url() -> None:
         _webapp_order_url("http://localhost:8000/ui", "ORD-1001")
         == "http://localhost:8000/ui/?order_id=ORD-1001"
     )
+    assert (
+        _webapp_order_url("http://localhost:8000/ui", "ORD-1001", tab="map")
+        == "http://localhost:8000/ui/?order_id=ORD-1001&tab=map#tab=map"
+    )
 
 
 def test_is_telegram_webapp_url_requires_https() -> None:

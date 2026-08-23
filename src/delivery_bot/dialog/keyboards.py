@@ -92,19 +92,32 @@ def order_status_keyboard(
     order_id: str,
     *,
     webapp_url: str | None = None,
+    open_map: bool = False,
 ) -> InlineKeyboardMarkup:
     """Клавиатура после показа статуса: WebApp (только HTTPS) + меню."""
     rows: list[list[InlineKeyboardButton]] = []
     if is_telegram_webapp_url(webapp_url):
-        url = _webapp_order_url(webapp_url or "", order_id)
+        url = _webapp_order_url(webapp_url or "", order_id, tab="map" if open_map else None)
+        label = "🗺 Открыть карту" if open_map else "📱 Открыть виджет статуса"
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="📱 Открыть виджет статуса",
+                    text=label,
                     web_app=WebAppInfo(url=url),
                 )
             ]
         )
+        if open_map:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text="📱 Виджет статуса",
+                        web_app=WebAppInfo(
+                            url=_webapp_order_url(webapp_url or "", order_id)
+                        ),
+                    )
+                ]
+            )
     elif webapp_url:
         logger.warning(
             "webapp_button_skipped_non_https",
@@ -168,7 +181,19 @@ def continue_session_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def _webapp_order_url(webapp_url: str, order_id: str) -> str:
-    """Собирает URL Mini App с order_id."""
+def _webapp_order_url(
+    webapp_url: str,
+    order_id: str,
+    *,
+    tab: str | None = None,
+) -> str:
+    """Собирает URL Mini App с order_id и опциональным tab.
+
+    tab дублируется в query и hash — hash надёжнее переживает редиректы.
+    """
     base = webapp_url.rstrip("/")
-    return f"{base}/?order_id={order_id}"
+    query = f"order_id={order_id}"
+    if tab:
+        query += f"&tab={tab}"
+        return f"{base}/?{query}#tab={tab}"
+    return f"{base}/?{query}"

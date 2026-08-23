@@ -60,6 +60,18 @@ def test_status_delegates_to_service() -> None:
     assert resp.delegate_status is True
 
 
+def test_courier_delegates_to_service() -> None:
+    mgr = DialogManager()
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
+    resp = mgr.handle_intent(session, _match(Intent.COURIER))
+    assert resp.delegate_courier is True
+
+
 def test_session_expired_prompts_continue() -> None:
     mgr = DialogManager()
     session = DialogSession(

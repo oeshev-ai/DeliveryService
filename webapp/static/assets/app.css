@@ -155,3 +155,43 @@ body {
   margin: 0;
   color: #b91c1c;
 }
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #1c2430;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+.tab.is-active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ffffff;
+}
+
+.card--map {
+  padding-bottom: 12px;
+}
+
+.map-note {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+
+.map {
+  width: 100%;
+  height: 280px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #e5e7eb;
+}

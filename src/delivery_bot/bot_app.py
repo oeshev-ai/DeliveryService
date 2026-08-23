@@ -15,9 +15,11 @@ from delivery_bot.handlers import setup_routers
 from delivery_bot.health import start_health_server
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient
+from delivery_bot.integrations.tms import MockTmsService
 from delivery_bot.logging_setup import get_logger, setup_logging
 from delivery_bot.middleware import DialogSessionMiddleware
 from delivery_bot.redis_client import create_redis, ping_redis
+from delivery_bot.services.courier import CourierService
 from delivery_bot.services.order_status import OrderStatusService
 from delivery_bot.webapp.bindings import WebAppBindingStore
 
@@ -65,11 +67,18 @@ async def _run() -> None:
     bindings = WebAppBindingStore(
         redis, ttl_seconds=settings.webapp_binding_ttl_seconds
     )
+    tms = MockTmsService()
     status_service = OrderStatusService(
         oms,
         status_cache,
         attempt_limiter,
         bindings=bindings,
+        webapp_url=settings.telegram_webapp_url,
+    )
+    courier_service = CourierService(
+        oms,
+        status_cache,
+        tms,
         webapp_url=settings.telegram_webapp_url,
     )
     dialog_manager = DialogManager()
@@ -81,6 +90,7 @@ async def _run() -> None:
     dp = Dispatcher()
     dp["dialog_manager"] = dialog_manager
     dp["status_service"] = status_service
+    dp["courier_service"] = courier_service
     dp["attempt_limiter"] = attempt_limiter
     dp["redis"] = redis
     dp.update.middleware(DialogSessionMiddleware(session_store))

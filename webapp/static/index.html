@@ -8,6 +8,12 @@
     />
     <title>Статус заказа</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzPuCTSzkweSfpBZ9BJuL5WHkE="
+      crossorigin=""
+    />
     <link rel="stylesheet" href="./assets/app.css" />
   </head>
   <body>
@@ -16,6 +22,11 @@
         <p class="brand__name">Delivery</p>
         <p class="brand__sub">Статус заказа</p>
       </header>
+
+      <nav class="tabs" id="tabs" hidden>
+        <button type="button" class="tab is-active" data-tab="status">Статус</button>
+        <button type="button" class="tab" data-tab="map">Карта</button>
+      </nav>
 
       <section id="state-loading" class="card" hidden>
         <p class="muted">Загружаем статус…</p>
@@ -26,7 +37,7 @@
         <button type="button" id="btn-retry" class="btn">Повторить</button>
       </section>
 
-      <section id="state-order" class="card" hidden>
+      <section id="panel-status" class="card" hidden>
         <div class="status-row">
           <span id="status-dot" class="status-dot" aria-hidden="true"></span>
           <div>
@@ -54,6 +65,10 @@
             <dd id="courier">—</dd>
           </div>
           <div>
+            <dt>Телефон курьера</dt>
+            <dd id="courier-phone">—</dd>
+          </div>
+          <div>
             <dt>Сумма</dt>
             <dd id="total">—</dd>
           </div>
@@ -63,7 +78,20 @@
           </div>
         </dl>
       </section>
+
+      <section id="panel-map" class="card card--map" hidden>
+        <p id="map-note" class="muted map-note"></p>
+        <div id="map" class="map" role="img" aria-label="Карта доставки"></div>
+        <p id="map-fallback" class="muted" hidden>
+          Геолокация курьера временно недоступна. Показан адрес доставки и ETA из заказа.
+        </p>
+      </section>
     </main>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
     <script src="./assets/app.js"></script>
   </body>
 </html>

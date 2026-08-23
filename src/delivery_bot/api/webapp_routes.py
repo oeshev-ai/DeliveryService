@@ -1,16 +1,17 @@
-"""API для Telegram WebApp (виджет статуса)."""
+"""API для Telegram WebApp (виджет статуса + трекинг)."""
 
 from __future__ import annotations
 
-from typing import Annotated, AsyncIterator
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from delivery_bot.api.oms_routes import get_db_session
 from delivery_bot.config import Settings, get_settings
 from delivery_bot.integrations.oms.repository import OmsRepository
+from delivery_bot.integrations.tms.mock import MockTmsService
 from delivery_bot.webapp.bindings import WebAppBindingStore
 from delivery_bot.webapp.colors import status_color, status_label
 from delivery_bot.webapp.schemas import WebAppOrderView
@@ -21,6 +22,7 @@ from delivery_bot.webapp.telegram_auth import (
 )
 
 router = APIRouter(prefix="/webapp/v1", tags=["webapp"])
+_tms = MockTmsService()
 
 
 async def get_redis(request: Request) -> Redis:
@@ -73,7 +75,7 @@ async def get_webapp_order(
     redis: Redis = Depends(get_redis),
     settings: Settings = Depends(get_settings),
 ) -> WebAppOrderView:
-    """Статус заказа для виджета (только после верификации в боте)."""
+    """Статус заказа + трекинг для виджета/карты."""
     store = WebAppBindingStore(redis, ttl_seconds=settings.webapp_binding_ttl_seconds)
     oid = order_id.strip().upper()
     if not await store.can_access(str(user.id), oid):
@@ -87,6 +89,14 @@ async def get_webapp_order(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
+    point = _tms.tracking_for(
+        order_id=order.id,
+        status=order.status,
+        courier_name=order.courier_name,
+        courier_phone=order.courier_phone,
+        eta_minutes=order.eta_minutes,
+    )
+
     return WebAppOrderView(
         id=order.id,
         status=order.status,
@@ -97,5 +107,13 @@ async def get_webapp_order(
         address=order.address,
         total_amount=order.total_amount,
         courier_name=order.courier_name,
+        courier_phone=order.courier_phone,
         items_count=len(order.items),
+        dest_lat=point.dest_lat,
+        dest_lon=point.dest_lon,
+        courier_lat=point.courier_lat,
+        courier_lon=point.courier_lon,
+        gps_available=point.gps_available,
+        tracking_message=point.message,
+        yandex_maps_api_key=settings.yandex_maps_api_key or "",
     )

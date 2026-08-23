@@ -19,4 +19,13 @@ class WebAppOrderView(BaseModel):
     address: str
     total_amount: Decimal
     courier_name: str | None = None
+    courier_phone: str | None = None
     items_count: int = 0
+    # Трекинг
+    dest_lat: float | None = None
+    dest_lon: float | None = None
+    courier_lat: float | None = None
+    courier_lon: float | None = None
+    gps_available: bool = False
+    tracking_message: str | None = None
+    yandex_maps_api_key: str = ""

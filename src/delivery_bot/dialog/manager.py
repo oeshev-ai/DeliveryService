@@ -18,7 +18,6 @@ from delivery_bot.logging_setup import get_logger
 logger = get_logger(__name__)
 
 _COMING_SOON_INTENTS = {
-    Intent.COURIER,
     Intent.CHANGE,
     Intent.CANCEL,
     Intent.FAQ,
@@ -38,6 +37,7 @@ class DialogResponse:
     # Если True — handler должен делегировать в OrderStatusService
     delegate_status: bool = False
     force_new_status: bool = False
+    delegate_courier: bool = False
 
 
 class DialogManager:
@@ -104,6 +104,9 @@ class DialogManager:
                 session.context.pop("pending_order_id", None)
                 return DialogResponse(text="", delegate_status=True, force_new_status=True)
             return DialogResponse(text="", delegate_status=True)
+
+        if match.intent == Intent.COURIER:
+            return DialogResponse(text="", delegate_courier=True)
 
         if match.intent == Intent.HELP:
             return DialogResponse(

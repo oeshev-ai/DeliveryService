@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from delivery_bot import __version__
 from delivery_bot.api.oms_routes import router as oms_router
+from delivery_bot.api.tms_routes import router as tms_router
 from delivery_bot.api.webapp_routes import router as webapp_router
 from delivery_bot.config import get_settings
 from delivery_bot.db.seed import seed_orders
@@ -74,6 +75,7 @@ def create_api_app(*, enable_lifespan: bool = True) -> FastAPI:
         lifespan=lifespan if enable_lifespan else None,
     )
     app.include_router(oms_router)
+    app.include_router(tms_router)
     app.include_router(webapp_router)
 
     static_dir = _webapp_static_dir()
