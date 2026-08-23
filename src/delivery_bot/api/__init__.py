@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from delivery_bot import __version__
+from delivery_bot.api.cancel_routes import router as cancel_router
 from delivery_bot.api.change_routes import router as change_router
 from delivery_bot.api.oms_routes import router as oms_router
 from delivery_bot.api.tms_routes import router as tms_router
@@ -78,6 +79,7 @@ def create_api_app(*, enable_lifespan: bool = True) -> FastAPI:
     app.include_router(oms_router)
     app.include_router(tms_router)
     app.include_router(change_router)
+    app.include_router(cancel_router)
     app.include_router(webapp_router)
 
     static_dir = _webapp_static_dir()

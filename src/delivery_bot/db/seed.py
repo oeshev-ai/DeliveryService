@@ -1,4 +1,4 @@
-"""Сид демо-заказов для mock OMS."""
+"""Идемпотентный сид демо-заказов для mock OMS."""
 
 from __future__ import annotations
 
@@ -18,14 +18,8 @@ DEMO_PHONE = "+79001234567"
 DEMO_PHONE_ALT = "+79007654321"  # last4 = 4321
 
 
-async def seed_orders(session: AsyncSession) -> None:
-    """Идемпотентно наполняет БД демо-заказами."""
-    existing = await session.scalar(select(OrderModel.id).limit(1))
-    if existing:
-        logger.info("seed_orders_skipped", reason="already_seeded")
-        return
-
-    samples: list[OrderModel] = [
+def _demo_orders() -> list[OrderModel]:
+    return [
         OrderModel(
             id="ORD-1001",
             phone=DEMO_PHONE,
@@ -139,8 +133,54 @@ async def seed_orders(session: AsyncSession) -> None:
                 ),
             ],
         ),
+        # Многопозиционный оплаченный заказ для частичной отмены
+        OrderModel(
+            id="ORD-1006",
+            phone=DEMO_PHONE,
+            status=OrderStatus.PAID.value,
+            address="Москва, ул. Покровка, 22",
+            delivery_slot="сегодня 19:00–21:00",
+            eta_minutes=80,
+            courier_name=None,
+            courier_phone=None,
+            total_amount=Decimal("1540.00"),
+            items=[
+                OrderItemModel(
+                    name="Пицца Пепперони",
+                    quantity=1,
+                    price=Decimal("790.00"),
+                    available=True,
+                ),
+                OrderItemModel(
+                    name="Салат Греческий",
+                    quantity=1,
+                    price=Decimal("450.00"),
+                    available=True,
+                ),
+                OrderItemModel(
+                    name="Лимонад 0.5л",
+                    quantity=2,
+                    price=Decimal("150.00"),
+                    available=True,
+                ),
+            ],
+        ),
     ]
 
-    session.add_all(samples)
-    await session.flush()
-    logger.info("seed_orders_done", count=len(samples))
+
+async def seed_orders(session: AsyncSession) -> None:
+    """Добавляет отсутствующие демо-заказы (не затирает уже изменённые)."""
+    samples = _demo_orders()
+    added = 0
+    for sample in samples:
+        exists = await session.get(OrderModel, sample.id)
+        if exists is not None:
+            continue
+        session.add(sample)
+        added += 1
+
+    if added:
+        await session.flush()
+        logger.info("seed_orders_done", added=added, total=len(samples))
+    else:
+        logger.info("seed_orders_skipped", reason="all_present", total=len(samples))

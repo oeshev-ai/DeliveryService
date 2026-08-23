@@ -41,6 +41,7 @@ def to_order_dto(order: OrderModel) -> OrderDTO:
         phone_last4=phone_last4(order.phone),
         items=[
             OrderItemDTO(
+                id=i.id,
                 name=i.name,
                 quantity=i.quantity,
                 price=i.price,

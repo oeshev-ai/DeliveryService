@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 class OrderItemDTO(BaseModel):
     """Позиция заказа."""
 
+    id: int | None = None
     name: str
     quantity: int
     price: Decimal

@@ -87,3 +87,59 @@ class MockPaymentGateway:
             amount=amount,
             message="Оплата прошла успешно" if amount > 0 else "Доплата не требуется",
         )
+
+    async def refund(
+        self,
+        *,
+        amount: Decimal,
+        order_id: str,
+        idempotency_key: str,
+        description: str = "",
+    ) -> PaymentResult:
+        """Возврат средств (идемпотентный)."""
+        if amount < 0:
+            return PaymentResult(
+                ok=False,
+                payment_id="",
+                amount=amount,
+                message="Сумма возврата некорректна",
+            )
+
+        key = self._idem_key(f"refund:{idempotency_key}")
+        existing = await self._redis.get(key)
+        if existing:
+            logger.info(
+                "refund_idempotent_hit",
+                order_id=order_id,
+                refund_id=existing,
+            )
+            return PaymentResult(
+                ok=True,
+                payment_id=str(existing),
+                amount=amount,
+                message="Возврат уже был выполнен ранее",
+            )
+
+        if amount == 0:
+            refund_id = f"rfnd_zero_{uuid4().hex[:8]}"
+        else:
+            refund_id = f"rfnd_{uuid4().hex[:12]}"
+
+        await self._redis.set(key, refund_id, ex=86_400)
+        logger.info(
+            "payment_refunded",
+            order_id=order_id,
+            refund_id=refund_id,
+            amount=str(amount),
+            description=description,
+        )
+        return PaymentResult(
+            ok=True,
+            payment_id=refund_id,
+            amount=amount,
+            message=(
+                f"Возврат {amount} ₽ оформлен"
+                if amount > 0
+                else "Возврат не требуется"
+            ),
+        )

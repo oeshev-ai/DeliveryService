@@ -12,6 +12,7 @@ from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
 from delivery_bot.logging_setup import get_logger
 from delivery_bot.services.courier import CourierService
+from delivery_bot.services.order_cancel import OrderCancelService
 from delivery_bot.services.order_change import OrderChangeService
 from delivery_bot.services.order_status import OrderStatusService
 
@@ -23,11 +24,11 @@ _STATUS_INPUT_STATES = {
     DialogState.AWAITING_PHONE_LAST4,
 }
 
-_CHANGE_INPUT_STATES = {
-    DialogState.CHANGE_AWAITING_ADDRESS,
-    DialogState.CHANGE_CONFIRM_PAY,
-    DialogState.CHANGE_AWAITING_SLOT,
+_AFTER_VERIFY_READY = {
+    DialogState.ORDER_STATUS,
+    DialogState.MAIN_MENU,
     DialogState.CHANGE_MENU,
+    DialogState.CANCEL_MENU,
 }
 
 
@@ -37,6 +38,7 @@ async def _resolve_response(
     status_service: OrderStatusService,
     courier_service: CourierService,
     change_service: OrderChangeService,
+    cancel_service: OrderCancelService,
 ) -> DialogResponse:
     if response.delegate_status:
         if response.force_new_status:
@@ -47,6 +49,8 @@ async def _resolve_response(
         return await courier_service.show(session)
     if response.delegate_change:
         return await change_service.start(session)
+    if response.delegate_cancel:
+        return await cancel_service.start(session)
     return response
 
 
@@ -58,6 +62,7 @@ async def on_command(
     status_service: OrderStatusService,
     courier_service: CourierService,
     change_service: OrderChangeService,
+    cancel_service: OrderCancelService,
 ) -> None:
     text = message.text or ""
     command = text.split()[0] if text else ""
@@ -69,6 +74,7 @@ async def on_command(
         status_service,
         courier_service,
         change_service,
+        cancel_service,
     )
     await message.answer(response.text, reply_markup=response.reply_markup)
 
@@ -81,24 +87,35 @@ async def on_text(
     status_service: OrderStatusService,
     courier_service: CourierService,
     change_service: OrderChangeService,
+    cancel_service: OrderCancelService,
 ) -> None:
     if dialog_session.state in _STATUS_INPUT_STATES:
         response = await status_service.handle_input(
             dialog_session, message.text or ""
         )
+        after = dialog_session.context.get("after_verify")
         if (
-            dialog_session.context.get("after_verify") == "change"
+            after in {"change", "cancel"}
             and dialog_session.context.get("verified_order_id")
-            and dialog_session.state
-            in {DialogState.ORDER_STATUS, DialogState.MAIN_MENU, DialogState.CHANGE_MENU}
+            and dialog_session.state in _AFTER_VERIFY_READY
         ):
             dialog_session.context.pop("after_verify", None)
-            response = await change_service.start(dialog_session)
+            if after == "change":
+                response = await change_service.start(dialog_session)
+            else:
+                response = await cancel_service.start(dialog_session)
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
     if dialog_session.state == DialogState.CHANGE_AWAITING_ADDRESS:
         response = await change_service.handle_input(
+            dialog_session, message.text or ""
+        )
+        await message.answer(response.text, reply_markup=response.reply_markup)
+        return
+
+    if dialog_session.state == DialogState.CANCEL_AWAITING_COMMENT:
+        response = await cancel_service.handle_input(
             dialog_session, message.text or ""
         )
         await message.answer(response.text, reply_markup=response.reply_markup)
@@ -112,6 +129,7 @@ async def on_text(
         status_service,
         courier_service,
         change_service,
+        cancel_service,
     )
     await message.answer(response.text, reply_markup=response.reply_markup)
 
@@ -144,6 +162,20 @@ async def on_change_callback(
         await query.message.answer(response.text, reply_markup=response.reply_markup)
 
 
+@router.callback_query(F.data.startswith("cancel:"))
+async def on_cancel_callback(
+    query: CallbackQuery,
+    dialog_session: DialogSession,
+    cancel_service: OrderCancelService,
+) -> None:
+    response = await cancel_service.handle_callback(
+        dialog_session, query.data or ""
+    )
+    await query.answer()
+    if query.message:
+        await query.message.answer(response.text, reply_markup=response.reply_markup)
+
+
 @router.callback_query(F.data.startswith("consent:"))
 @router.callback_query(F.data.startswith("menu:"))
 @router.callback_query(F.data.startswith("session:"))
@@ -154,6 +186,7 @@ async def on_callback(
     status_service: OrderStatusService,
     courier_service: CourierService,
     change_service: OrderChangeService,
+    cancel_service: OrderCancelService,
 ) -> None:
     data = query.data or ""
     match = dialog_manager.matcher.match_callback(data)
@@ -166,6 +199,7 @@ async def on_callback(
         status_service,
         courier_service,
         change_service,
+        cancel_service,
     )
     await query.answer()
     if query.message:

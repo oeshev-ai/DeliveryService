@@ -13,6 +13,12 @@ from delivery_bot.integrations.oms.schemas import (
     VerifyRequest,
     VerifyResponse,
 )
+from delivery_bot.integrations.oms.cancel_schemas import (
+    CancelReasonDTO,
+    CancelResponse,
+    FullCancelRequest,
+    PartialCancelRequest,
+)
 from delivery_bot.integrations.oms.change_schemas import (
     AddressQuoteRequest,
     AddressQuoteResponse,
@@ -182,3 +188,68 @@ class OmsClient:
         if resp.status_code >= 500:
             raise OmsError(f"OMS error {resp.status_code}")
         return ApplySlotChangeResponse.model_validate(resp.json())
+
+    async def list_cancel_reasons(self) -> list[CancelReasonDTO]:
+        try:
+            resp = await self._http().get("/oms/v1/cancel-reasons")
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 400:
+            raise OmsError(f"OMS error {resp.status_code}")
+        return [CancelReasonDTO.model_validate(item) for item in resp.json()]
+
+    async def cancel_order(
+        self,
+        order_id: str,
+        *,
+        reason_code: str,
+        comment: str,
+        idempotency_key: str,
+    ) -> CancelResponse:
+        payload = FullCancelRequest(
+            order_id=order_id,
+            reason_code=reason_code,
+            comment=comment,
+            idempotency_key=idempotency_key,
+        )
+        try:
+            resp = await self._http().post(
+                "/oms/v1/orders/cancel",
+                json=payload.model_dump(mode="json"),
+            )
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 500:
+            raise OmsError(f"OMS error {resp.status_code}")
+        if resp.status_code == 404:
+            raise OmsError("Order not found")
+        return CancelResponse.model_validate(resp.json())
+
+    async def partial_cancel(
+        self,
+        order_id: str,
+        *,
+        item_ids: list[int],
+        reason_code: str,
+        comment: str,
+        idempotency_key: str,
+    ) -> CancelResponse:
+        payload = PartialCancelRequest(
+            order_id=order_id,
+            item_ids=item_ids,
+            reason_code=reason_code,
+            comment=comment,
+            idempotency_key=idempotency_key,
+        )
+        try:
+            resp = await self._http().post(
+                "/oms/v1/orders/partial-cancel",
+                json=payload.model_dump(mode="json"),
+            )
+        except httpx.HTTPError as exc:
+            raise OmsError("OMS unavailable") from exc
+        if resp.status_code >= 500:
+            raise OmsError(f"OMS error {resp.status_code}")
+        if resp.status_code == 404:
+            raise OmsError("Order not found")
+        return CancelResponse.model_validate(resp.json())
