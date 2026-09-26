@@ -15,17 +15,37 @@ docker compose up --build
 ```
 
 Сервисы:
-- `bot` — Telegram-бот + `/health` на порту 8081
-- `api` — FastAPI (health/ready; админка и WebApp API появятся в следующих итерациях)
-- `postgres`, `redis`
-- `worker` — заготовка под фоновые задачи (ARQ)
+- `bot` — Telegram-бот + health на хосте `${HOST_BOT_HEALTH_PORT:-18081}`
+- `api` — FastAPI + WebApp UI на `${HOST_API_PORT:-18000}`
+- `postgres`, `redis` — **только внутри Docker-сети** (не публикуются на хост)
+- `worker` — ARQ (напоминания отзывов, ответы оператора)
 
 Локальная проверка здоровья:
 
 ```bash
-curl http://localhost:8081/health
-curl http://localhost:8000/health
+curl http://localhost:18081/health
+curl http://localhost:18000/health
 ```
+
+### Запуск рядом с другими ботами на сервере
+
+Compose-проект называется `delivery` (`name: delivery`) — контейнеры и volume не
+пересекутся с чужими `docker compose` проектами.
+
+Перед деплоем на сервере проверьте свободные порты:
+
+```bash
+ss -tlnp | grep -E ':(18000|18081|8000|8081|5432|6379)\s'
+```
+
+Если `18000`/`18081` заняты — в `.env` задайте другие `HOST_API_PORT` / `HOST_BOT_HEALTH_PORT`.
+
+**Обязательно:**
+1. Отдельный `TELEGRAM_BOT_TOKEN` (свой бот у BotFather) — один токен нельзя polling'ить дважды
+2. Свой `.env` (не шарить `API_KEY` / пароли с другими ботами)
+3. Для Mini App: `TELEGRAM_WEBAPP_URL=https://ваш-домен:порт/ui` (HTTPS)
+
+Postgres и Redis этого стека наружу не торчат — конфликта с `:5432` / `:6379` других ботов нет.
 
 ## Локальная разработка без Docker (опционально)
 

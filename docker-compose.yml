@@ -1,3 +1,12 @@
+# Delivery Service — изолированный стек для сервера с несколькими ботами.
+#
+# Запуск (уникальное имя проекта, чтобы не конфликтовать с другими compose):
+#   COMPOSE_PROJECT_NAME=delivery docker compose up -d --build
+#
+# Порты на хост задаются в .env (HOST_*). Postgres/Redis наружу не публикуются.
+
+name: delivery
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,25 +14,25 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-delivery}
       POSTGRES_USER: ${POSTGRES_USER:-delivery}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-delivery_secret}
-    ports:
-      - "5432:5432"
+    # Не публикуем 5432 на хост — только внутренняя сеть compose
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - delivery_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-delivery} -d ${POSTGRES_DB:-delivery}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # Не публикуем 6379 на хост
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
   api:
     build: .
@@ -34,7 +43,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-delivery}:${POSTGRES_PASSWORD:-delivery_secret}@postgres:5432/${POSTGRES_DB:-delivery}
       REDIS_URL: redis://redis:6379/0
     ports:
-      - "8000:8000"
+      # По умолчанию 18000, чтобы не пересечься с типичным :8000 у других сервисов
+      - "${HOST_API_PORT:-18000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,6 +55,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   bot:
     build: .
@@ -55,11 +66,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-delivery}:${POSTGRES_PASSWORD:-delivery_secret}@postgres:5432/${POSTGRES_DB:-delivery}
       REDIS_URL: redis://redis:6379/0
       OMS_BASE_URL: http://api:8000
-      TELEGRAM_WEBAPP_URL: ${TELEGRAM_WEBAPP_URL:-http://localhost:8000/ui}
+      TELEGRAM_WEBAPP_URL: ${TELEGRAM_WEBAPP_URL:-http://localhost:18000/ui}
       HEALTH_HOST: 0.0.0.0
       HEALTH_PORT: 8081
     ports:
-      - "8081:8081"
+      - "${HOST_BOT_HEALTH_PORT:-18081}:8081"
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,4 +94,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  delivery_postgres_data:
