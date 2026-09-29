@@ -105,12 +105,23 @@ class OrderStatusService:
         return await self.start(session)
 
     async def select_order(self, session: DialogSession, order_id: str) -> DialogResponse:
-        """Выбор заказа из списка (callback)."""
-        session.context["pending_order_id"] = order_id.upper()
+        """Выбор заказа из списка (callback).
+
+        Если телефон уже подтверждён в этой сессии (список «другие заказы»),
+        повторный ввод last4 не нужен.
+        """
+        oid = order_id.strip().upper()
+        last4 = session.context.get("phone_last4")
+        if last4:
+            session.context["verified_order_id"] = oid
+            session.context.pop("pending_order_id", None)
+            return await self._show_order(session, oid)
+
+        session.context["pending_order_id"] = oid
         session.state = DialogState.AWAITING_PHONE_LAST4
         return DialogResponse(
             text=(
-                f"Заказ <b>{order_id.upper()}</b>. "
+                f"Заказ <b>{oid}</b>. "
                 "Введите последние 4 цифры телефона, указанного при оформлении."
             ),
         )

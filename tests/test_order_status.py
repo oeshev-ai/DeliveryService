@@ -119,3 +119,65 @@ async def test_status_flow_verify_fail_counts_attempts() -> None:
     resp = await service.handle_input(session, "0000")
     assert "попыток" in resp.text.lower()
     await redis.aclose()
+
+
+@pytest.mark.asyncio
+async def test_select_sibling_reuses_verified_last4() -> None:
+    """После верификации выбор другого заказа из списка не просит last4 снова."""
+    redis = FakeRedis(decode_responses=True)
+    oms = AsyncMock(spec=OmsClient)
+    sibling = OrderDTO(
+        id="ORD-1002",
+        status="paid",
+        address="Москва, Арбат 1",
+        eta_minutes=40,
+        total_amount=Decimal("500"),
+        phone_last4="4567",
+        items=[],
+    )
+    oms.verify.return_value = VerifyResponse(ok=True, order=sibling)
+
+    service = OrderStatusService(
+        oms,
+        OrderStatusCache(redis, ttl_seconds=60),
+        AttemptLimiter(redis, max_attempts=5, window_seconds=60, block_seconds=60),
+    )
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.ORDER_STATUS,
+        context={
+            "verified_order_id": "ORD-1001",
+            "phone_last4": "4567",
+        },
+    )
+
+    resp = await service.select_order(session, "ORD-1002")
+    assert session.state != DialogState.AWAITING_PHONE_LAST4
+    assert session.context["verified_order_id"] == "ORD-1002"
+    assert "Арбат" in resp.text
+    assert "4 цифр" not in resp.text.lower()
+    oms.verify.assert_awaited_once_with("ORD-1002", "4567")
+    await redis.aclose()
+
+
+@pytest.mark.asyncio
+async def test_select_order_asks_last4_without_prior_verify() -> None:
+    redis = FakeRedis(decode_responses=True)
+    oms = AsyncMock(spec=OmsClient)
+    service = OrderStatusService(
+        oms,
+        OrderStatusCache(redis, ttl_seconds=60),
+        AttemptLimiter(redis, max_attempts=5, window_seconds=60, block_seconds=60),
+    )
+    session = DialogSession(
+        channel="telegram",
+        user_id="1",
+        consent_accepted=True,
+        state=DialogState.MAIN_MENU,
+    )
+    resp = await service.select_order(session, "ORD-1001")
+    assert session.state == DialogState.AWAITING_PHONE_LAST4
+    assert "4 цифр" in resp.text.lower()
+    await redis.aclose()
