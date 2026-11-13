@@ -52,7 +52,7 @@ Postgres и Redis этого стека наружу не торчат — ко�
 ```bash
 python -m venv .venv
 # Windows: .venv\\Scripts\\activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 cp .env.example .env
 # Поднимите postgres/redis или укажите локальные URL
 python -m delivery_bot

@@ -12,15 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
 COPY pyproject.toml README.md ./
 COPY src ./src
+RUN pip install .
+
 COPY tests ./tests
 COPY webapp ./webapp
-
-RUN pip install -e .
 
 # Default: API (переопределяется в compose)
 CMD ["uvicorn", "delivery_bot.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
