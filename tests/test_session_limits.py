@@ -73,3 +73,29 @@ async def test_attempt_limiter_reset(redis) -> None:
     check = await limiter.check("verify", "u1")
     assert check.allowed is True
     assert check.attempts == 0
+
+
+@pytest.mark.asyncio
+async def test_attempt_limiter_parallel_hits(redis) -> None:
+    """N параллельных hit → ровно max_attempts-1 разрешённых; счётчик с TTL."""
+    import asyncio
+
+    max_attempts = 5
+    limiter = AttemptLimiter(
+        redis,
+        max_attempts=max_attempts,
+        window_seconds=60,
+        block_seconds=120,
+    )
+    subject = "tg:parallel"
+    results = await asyncio.gather(*[limiter.hit("verify", subject) for _ in range(20)])
+    allowed = [r for r in results if r.allowed]
+    blocked = [r for r in results if not r.allowed]
+    assert len(allowed) == max_attempts - 1
+    assert len(blocked) == 20 - (max_attempts - 1)
+    assert any(r.is_blocked for r in blocked)
+
+    attempts_key = limiter._attempts_key("verify", subject)  # noqa: SLF001
+    ttl = await redis.ttl(attempts_key)
+    # После блокировки attempts-ключ удаляется Lua-скриптом.
+    assert ttl < 0 or ttl is None or ttl == -2
