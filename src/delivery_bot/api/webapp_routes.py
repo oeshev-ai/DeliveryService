@@ -140,13 +140,14 @@ async def get_order_history(
 
     repo = OmsRepository(session)
     review_repo = PostDeliveryRepository(session)
-    orders = await repo.list_by_last4(binding.phone_last4, limit=12)
+    orders = await repo.list_full_by_last4(binding.phone_last4, limit=12)
+    reviews = await review_repo.get_reviews_for_orders(
+        [o.id for o in orders],
+        str(user.id),
+    )
     items: list[WebAppHistoryItem] = []
-    for summary in orders:
-        full = await repo.get_by_id(summary.id)
-        if full is None:
-            continue
-        review = await review_repo.get_review(full.id, str(user.id))
+    for full in orders:
+        review = reviews.get(full.id)
         submitted = review is not None and (review.rating is not None or review.skipped)
         items.append(
             WebAppHistoryItem(

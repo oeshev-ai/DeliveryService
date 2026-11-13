@@ -79,6 +79,25 @@ class PostDeliveryRepository:
             ),
         )
 
+    async def get_reviews_for_orders(
+        self,
+        order_ids: list[str],
+        user_id: str,
+    ) -> dict[str, ReviewModel]:
+        """Отзывы пользователя по списку заказов одним запросом."""
+        if not order_ids:
+            return {}
+        normalized = [oid.upper() for oid in order_ids]
+        rows = (
+            await self._session.scalars(
+                select(ReviewModel).where(
+                    ReviewModel.order_id.in_(normalized),
+                    ReviewModel.user_id == user_id,
+                )
+            )
+        ).all()
+        return {row.order_id: row for row in rows}
+
     async def submit_review(self, body: SubmitReviewRequest) -> ReviewModel:
         """Создаёт или обновляет отзыв; гонка вставок → существующая запись."""
         existing = await self.get_review(body.order_id, body.user_id)

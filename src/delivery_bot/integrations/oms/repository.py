@@ -88,9 +88,7 @@ class OmsRepository:
         return to_order_dto(order)
 
     async def list_by_last4(self, last4: str, *, limit: int = 10) -> list[OrderSummaryDTO]:
-        stmt = select(OrderModel).order_by(OrderModel.created_at.desc()).limit(100)
-        rows = (await self._session.scalars(stmt)).all()
-        matched = [o for o in rows if phone_last4(o.phone) == last4][:limit]
+        orders = await self.list_full_by_last4(last4, limit=limit)
         return [
             OrderSummaryDTO(
                 id=o.id,
@@ -98,5 +96,16 @@ class OmsRepository:
                 eta_minutes=o.eta_minutes,
                 total_amount=o.total_amount,
             )
-            for o in matched
+            for o in orders
         ]
+
+    async def list_full_by_last4(self, last4: str, *, limit: int = 10) -> list[OrderModel]:
+        """Полные заказы по last4 одним запросом с ``selectinload(items)``."""
+        stmt = (
+            select(OrderModel)
+            .options(selectinload(OrderModel.items))
+            .order_by(OrderModel.created_at.desc())
+            .limit(100)
+        )
+        rows = (await self._session.scalars(stmt)).all()
+        return [o for o in rows if phone_last4(o.phone) == last4][:limit]
