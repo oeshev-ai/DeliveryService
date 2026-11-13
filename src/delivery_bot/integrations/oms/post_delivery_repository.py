@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from delivery_bot.db.models import ClaimModel, ReviewModel
@@ -79,6 +80,7 @@ class PostDeliveryRepository:
         )
 
     async def submit_review(self, body: SubmitReviewRequest) -> ReviewModel:
+        """Создаёт или обновляет отзыв; гонка вставок → существующая запись."""
         existing = await self.get_review(body.order_id, body.user_id)
         if existing is not None:
             existing.rating = body.rating
@@ -94,11 +96,19 @@ class PostDeliveryRepository:
             comment=(body.comment or "").strip() or None,
             skipped=False,
         )
-        self._session.add(row)
-        await self._session.flush()
-        return row
+        try:
+            async with self._session.begin_nested():
+                self._session.add(row)
+                await self._session.flush()
+            return row
+        except IntegrityError:
+            existing = await self.get_review(body.order_id, body.user_id)
+            if existing is None:
+                raise
+            return existing
 
     async def skip_review(self, body: SkipReviewRequest) -> ReviewModel:
+        """Помечает отзыв пропущенным; гонка вставок → существующая запись."""
         existing = await self.get_review(body.order_id, body.user_id)
         if existing is not None:
             return existing
@@ -110,6 +120,13 @@ class PostDeliveryRepository:
             comment=None,
             skipped=True,
         )
-        self._session.add(row)
-        await self._session.flush()
-        return row
+        try:
+            async with self._session.begin_nested():
+                self._session.add(row)
+                await self._session.flush()
+            return row
+        except IntegrityError:
+            existing = await self.get_review(body.order_id, body.user_id)
+            if existing is None:
+                raise
+            return existing

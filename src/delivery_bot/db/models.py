@@ -5,7 +5,17 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from delivery_bot.db.base import Base
@@ -109,6 +119,7 @@ class ReviewModel(Base):
     """Отзыв по доставленному заказу."""
 
     __tablename__ = "reviews"
+    __table_args__ = (UniqueConstraint("order_id", "user_id", name="uq_reviews_order_user"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     order_id: Mapped[str] = mapped_column(
