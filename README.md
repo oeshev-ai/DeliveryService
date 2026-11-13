@@ -1,6 +1,7 @@
-"""
-Delivery Service Chatbot
-========================
+# Delivery Service Chatbot
+
+[![CI](https://github.com/oeshev-ai/DeliveryService/actions/workflows/ci.yml/badge.svg)](https://github.com/oeshev-ai/DeliveryService/actions/workflows/ci.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
 Клиентский Telegram-бот для сервиса доставки (еда/товары).
 MVP: aiogram + PostgreSQL + Redis + FastAPI (админка/WebApp backend) + моки OMS/TMS/Payments.
@@ -61,7 +62,33 @@ python -m delivery_bot
 ## Тесты
 
 ```bash
+pip install -e ".[dev]"
+
+# Большинство тестов — unit (fakeredis / AsyncMock), Postgres не нужен.
+# Интеграционный тест CRM (tests/test_escalation.py::test_crm_repository_create_and_operator_reply)
+# требует доступный PostgreSQL:
+export DATABASE_URL=postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery
+export APP_ENV=test
+
 pytest
+# или с coverage:
+pytest --cov=delivery_bot --cov-report=term-missing
+```
+
+На Windows (PowerShell):
+
+```powershell
+$env:DATABASE_URL = "postgresql+asyncpg://delivery:delivery_secret@localhost:15432/delivery"
+$env:APP_ENV = "test"
+pytest
+```
+
+Локальный Postgres для интеграционного теста (порт 5432 на хосте часто занят Hyper-V — можно `15432`):
+
+```bash
+docker run --rm -d --name delivery-pg-test \
+  -e POSTGRES_DB=delivery -e POSTGRES_USER=delivery -e POSTGRES_PASSWORD=delivery_secret \
+  -p 15432:5432 postgres:16-alpine
 ```
 
 ## Структура
@@ -169,4 +196,3 @@ src/delivery_bot/
 ## Итерации
 
 См. согласованное ТЗ: Итерация 0 (каркас) → Итерация 1 (диалог) → … → Итерация 10 (harden).
-"""
