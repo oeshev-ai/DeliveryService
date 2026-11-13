@@ -64,6 +64,11 @@ class RedisSessionStore:
         self._session_ttl = session_ttl_seconds
         self._consent_ttl = consent_ttl_seconds
 
+    @property
+    def redis(self) -> Redis:
+        """Клиент Redis, используемый хранилищем сессий."""
+        return self._redis
+
     @staticmethod
     def _session_key(channel: str, user_id: str) -> str:
         return f"dialog:session:{channel}:{user_id}"
