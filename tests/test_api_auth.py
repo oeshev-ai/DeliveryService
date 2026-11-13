@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from delivery_bot.api import create_api_app
-from delivery_bot.config import get_settings
+from delivery_bot.api.auth import require_api_key
+from delivery_bot.config import Settings, get_settings
 
 
 def test_oms_rejects_invalid_api_key() -> None:
@@ -31,3 +34,18 @@ def test_oms_accepts_valid_api_key() -> None:
     )
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_require_api_key_accepts_non_ascii() -> None:
+    """Не-ASCII ключ сравнивается как байты: совпадение проходит, чужой — 401.
+
+    HTTP-заголовок в TestClient не перевозит не-ASCII, поэтому зависимость
+    вызывается напрямую: именно ``compare_digest`` на ``str`` давал TypeError.
+    """
+    settings = Settings(api_key="ключ-юникод")
+    await require_api_key(x_api_key="ключ-юникод", settings=settings)
+    with pytest.raises(HTTPException) as exc:
+        await require_api_key(x_api_key="wrong-key", settings=settings)
+    assert exc.value.status_code == 401
+    assert exc.value.detail == "Invalid API key"

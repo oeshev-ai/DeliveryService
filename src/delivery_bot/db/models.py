@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    Computed,
     DateTime,
     ForeignKey,
     Integer,
@@ -28,6 +29,16 @@ class OrderModel(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     phone: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
+    # Последние 4 цифры. STORED, чтобы список по last4 шёл по индексу, а не seq scan.
+    phone_last4: Mapped[str] = mapped_column(
+        String(4),
+        Computed(
+            "right(regexp_replace(phone, '[^0-9]', '', 'g'), 4)",
+            persisted=True,
+        ),
+        nullable=False,
+        index=True,
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     address: Mapped[str] = mapped_column(Text, nullable=False)
     delivery_slot: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -102,13 +102,12 @@ class OmsRepository:
     async def list_full_by_last4(self, last4: str, *, limit: int = 10) -> list[OrderModel]:
         """Полные заказы по last4 одним SQL-запросом с ``selectinload(items)``.
 
-        Фильтр совпадает с ``phone_last4``: из номера оставляются цифры,
-        сравниваются последние четыре. Лимит применяется уже к совпадениям.
+        Фильтр — равенство по хранимой колонке ``orders.phone_last4``
+        (то же правило, что у ``phone_last4``). Лимит применяется уже к совпадениям.
         """
-        digits = func.regexp_replace(OrderModel.phone, "[^0-9]", "", "g")
         stmt = (
             select(OrderModel)
-            .where(func.right(digits, 4) == last4)
+            .where(OrderModel.phone_last4 == last4)
             .options(selectinload(OrderModel.items))
             .order_by(OrderModel.created_at.desc())
             .limit(limit)

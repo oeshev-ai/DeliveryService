@@ -94,21 +94,32 @@ class DialogSessionMiddleware(BaseMiddleware):
 
 
 async def _reply_contention(event: TelegramObject) -> None:
-    """Отвечает пользователю при неудаче захвата лока (событие не сохраняется)."""
+    """Один ответ пользователю, если лок не захвачен (событие не сохраняется).
+
+    У callback с сообщением ``answer()`` только снимает индикатор кнопки,
+    текст уходит одним сообщением в чат.
+    """
     try:
         if isinstance(event, Update):
             if event.message is not None:
                 await event.message.answer(_CONTENTION_TEXT)
             elif event.callback_query is not None:
-                await event.callback_query.answer(_CONTENTION_TEXT, show_alert=False)
-                if event.callback_query.message is not None:
-                    await event.callback_query.message.answer(_CONTENTION_TEXT)
+                await _answer_callback_once(event.callback_query)
         elif isinstance(event, Message):
             await event.answer(_CONTENTION_TEXT)
         elif isinstance(event, CallbackQuery):
-            await event.answer(_CONTENTION_TEXT, show_alert=False)
+            await _answer_callback_once(event)
     except Exception as exc:  # noqa: BLE001 — UX best-effort
         logger.warning("dialog_contention_reply_failed", error=str(exc))
+
+
+async def _answer_callback_once(callback: CallbackQuery) -> None:
+    """Текст contention — один раз. Пустой ``answer()`` гасит загрузку кнопки."""
+    if callback.message is not None:
+        await callback.answer()
+        await callback.message.answer(_CONTENTION_TEXT)
+        return
+    await callback.answer(_CONTENTION_TEXT, show_alert=False)
 
 
 def _extract_user_id(event: TelegramObject, data: dict[str, Any]) -> str | None:

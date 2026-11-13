@@ -138,7 +138,8 @@ async def test_list_full_by_last4_filters_in_sql() -> None:
 
     assert [o.id for o in orders] == [target_id]
     order_sql = " ".join(statements).lower()
-    assert "regexp_replace" in order_sql
+    assert "orders.phone_last4" in order_sql
+    assert "regexp_replace" not in order_sql
     await engine.dispose()
 
 
