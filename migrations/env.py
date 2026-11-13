@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from delivery_bot.config import get_settings
 from delivery_bot.db import models as _models  # noqa: F401 — регистрация metadata
+from delivery_bot.db.alembic_url import set_sqlalchemy_url
 from delivery_bot.db.base import Base
 
 config = context.config
@@ -22,7 +23,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # URL из Settings (перекрывает sqlalchemy.url в alembic.ini).
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+set_sqlalchemy_url(config, get_settings().database_url)
 
 
 def run_migrations_offline() -> None:
