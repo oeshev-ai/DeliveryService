@@ -15,12 +15,10 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 
 from delivery_bot.config import Settings, get_settings
-from delivery_bot.db.migrate import apply_schema_patches
 from delivery_bot.db.models import ReviewModel
 from delivery_bot.db.session import (
     create_engine,
     create_session_factory,
-    init_db,
     session_scope,
 )
 from delivery_bot.dialog import texts
@@ -37,8 +35,6 @@ async def startup(ctx: dict[str, Any]) -> None:
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     ctx["redis"] = redis
     engine = create_engine(settings)
-    await init_db(engine)
-    await apply_schema_patches(engine)
     ctx["engine"] = engine
     ctx["session_factory"] = create_session_factory(engine)
     logger.info("worker_started", env=settings.app_env)
@@ -120,7 +116,7 @@ async def process_review_reminders(ctx: dict[str, Any]) -> None:
         try:
             await bot.send_message(
                 int(user_id),
-                f"Напоминание: как вам заказ <b>{order_id}</b>? " "Оцените доставку от 1 до 5 ⭐",
+                f"Напоминание: как вам заказ <b>{order_id}</b>? Оцените доставку от 1 до 5 ⭐",
                 reply_markup=markup,
             )
             logger.info(

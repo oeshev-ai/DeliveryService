@@ -59,6 +59,33 @@ cp .env.example .env
 python -m delivery_bot
 ```
 
+## Миграции
+
+Схема PostgreSQL управляется Alembic (`migrations/`). В Docker API при старте
+выполняет `alembic upgrade head`.
+
+```bash
+# Применить все миграции
+alembic upgrade head
+
+# Откатить на одну ревизию
+alembic downgrade -1
+
+# Создать новую ревизию после изменения моделей
+alembic revision --autogenerate -m "describe_change"
+```
+
+### Legacy-БД (раньше через ``create_all``)
+
+Если таблицы уже созданы `init_db`/`create_all`, а `alembic_version` пуста:
+
+```bash
+python scripts/stamp_legacy_db.py
+# далее обычные alembic upgrade head для новых ревизий
+```
+
+Скрипт stamp'ит `head` только если есть таблица `orders` и версия ещё не проставлена.
+
 ## Тесты
 
 ```bash

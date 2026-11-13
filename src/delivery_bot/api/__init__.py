@@ -23,13 +23,11 @@ from delivery_bot.api.post_delivery_routes import router as post_delivery_router
 from delivery_bot.api.tms_routes import router as tms_router
 from delivery_bot.api.webapp_routes import router as webapp_router
 from delivery_bot.config import get_settings
-from delivery_bot.db.migrate import apply_schema_patches
 from delivery_bot.db.seed import seed_orders
 from delivery_bot.db.seed_faq import seed_faq
 from delivery_bot.db.session import (
     create_engine,
     create_session_factory,
-    init_db,
     session_scope,
 )
 from delivery_bot.integrations.llm import LlmClient, MockLlmClient
@@ -56,8 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     factory = create_session_factory(engine)
     redis = create_redis(settings)
     try:
-        await init_db(engine)
-        await apply_schema_patches(engine)
+        # Схема БД накатывается через Alembic (см. docker-compose / alembic upgrade head).
         async with session_scope(factory) as session:
             await seed_orders(session)
             await seed_faq(session)
