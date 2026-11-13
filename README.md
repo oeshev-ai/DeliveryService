@@ -1,194 +1,158 @@
 # Delivery Service Chatbot
 
-[![CI](https://github.com/oeshev-ai/DeliveryService/actions/workflows/ci.yml/badge.svg)](https://github.com/oeshev-ai/DeliveryService/actions/workflows/ci.yml)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+Пакет `delivery-bot` `0.1.0`. Клиентский бот поддержки доставки: процесс Telegram (`python -m delivery_bot`), HTTP API (`uvicorn delivery_bot.api.app:app`) и ARQ-воркер (`python -m delivery_bot.worker`).
 
-Клиентский Telegram-бот поддержки сервиса доставки: статус заказа, курьер/карта,
-смена адреса и времени, отмена с возвратом, FAQ, претензии/отзывы, эскалация к оператору.
-Стек: **Python 3.12 · aiogram 3 · FastAPI · SQLAlchemy 2 (async) · PostgreSQL · Redis · ARQ**.
+Зависимости приложения: Python `>=3.11` (образ и CI — 3.12), aiogram 3.31.0, FastAPI 0.115.14, SQLAlchemy 2.0.43 (asyncio) + asyncpg, Alembic 1.16.5, Redis-клиент 5.3.1, ARQ 0.26.3, Pydantic 2.11.9 / pydantic-settings 2.10.1, structlog 25.4.0.
 
-OMS / TMS / Payments / CRM — **моки** (так и задумано для портфолио и локального демо).
-
-## Архитектура
-
-```mermaid
-flowchart LR
-  subgraph Clients
-    TG[Telegram]
-    MA[Mini App]
-  end
-
-  subgraph Runtime
-    BOT[bot<br/>aiogram + health :8081]
-    API[api<br/>FastAPI :8000]
-    WRK[worker<br/>ARQ]
-  end
-
-  subgraph Data
-    PG[(PostgreSQL)]
-    RD[(Redis)]
-  end
-
-  TG --> BOT
-  MA --> API
-  BOT --> API
-  BOT --> RD
-  API --> PG
-  API --> RD
-  WRK --> PG
-  WRK --> RD
-  WRK --> TG
-```
-
-| Сервис | Роль |
-|--------|------|
-| `bot` | Telegram polling, FSM/сессии, health/metrics на `${HOST_BOT_HEALTH_PORT:-18081}` |
-| `api` | Mock OMS/TMS/CRM/FAQ + WebApp UI на `${HOST_API_PORT:-18000}`; перед стартом `alembic upgrade head` |
-| `worker` | Напоминания об отзыве, доставка ответов оператора |
-| `postgres` / `redis` | Только внутри Docker-сети (на хост не публикуются) |
-
-## Скриншоты
-
-Добавьте PNG в `docs/screenshots/` (имена ниже — контракт README):
-
-| Файл | Содержание |
-|------|------------|
-| `docs/screenshots/bot-menu.png` | Главное меню бота |
-| `docs/screenshots/webapp-status.png` | Mini App — вкладка статуса |
-| `docs/screenshots/webapp-map.png` | Mini App — карта курьера |
-| `docs/screenshots/webapp-history.png` | Mini App — история заказов |
-
-<!-- placeholders до появления файлов -->
-![Бот — меню](docs/screenshots/bot-menu.png)
-![Mini App — статус](docs/screenshots/webapp-status.png)
-![Mini App — карта](docs/screenshots/webapp-map.png)
-![Mini App — история](docs/screenshots/webapp-history.png)
-
-## Быстрый старт (Docker)
+## Запуск
 
 ```bash
 cp .env.example .env
-# TELEGRAM_BOT_TOKEN=...  (обязательно сменить секреты перед production)
-
-docker compose up --build
+# COMPOSE_PROJECT_NAME=delivery — имя проекта в комментарии compose
+docker compose up -d --build
 ```
 
-```bash
-curl http://localhost:18081/health
-curl http://localhost:18000/health
-```
+`docker-compose.yml` задаёт `name: delivery`. Сервисы `postgres` (`postgres:16-alpine`) и `redis` (`redis:7-alpine`) без секции `ports`. API публикует `${HOST_API_PORT:-18000}:8000`, health бота — `${HOST_BOT_HEALTH_PORT:-18081}:8081`.
 
-Compose-проект: `name: delivery`. Порты на хосте — `HOST_API_PORT` / `HOST_BOT_HEALTH_PORT`.
-Для Mini App с телефона нужен HTTPS (`TELEGRAM_WEBAPP_URL`).
+| Сервис | Команда | Зависимости |
+| --- | --- | --- |
+| `api` | `alembic upgrade head`, затем uvicorn на `0.0.0.0:8000` | postgres и redis `service_healthy`; healthcheck `GET /ready` |
+| `bot` | `python -m delivery_bot` | postgres, redis и api `service_healthy`; `OMS_BASE_URL=http://api:8000`; healthcheck `GET http://localhost:8081/health` |
+| `worker` | `python -m delivery_bot.worker` | redis `service_healthy` |
 
-## Локальная разработка
+Образ (`Dockerfile`): `python:3.12-slim`, `PYTHONPATH=/app/src`, пользователь `app` (uid/gid 10001), `pip install .`, каталог `webapp` копируется в образ. CMD по умолчанию — uvicorn на порту 8000; compose его переопределяет. `.dockerignore` содержит отдельные токены `.env`, `.venv` и `tests` (`tests/test_alembic_tooling.py`, `test_dockerignore_excludes_secrets_venv_and_tests`).
 
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-cp .env.example .env
-# DATABASE_URL / REDIS_URL на локальные сервисы
-alembic upgrade head
-python -m delivery_bot
-# API: uvicorn delivery_bot.api.app:app --reload
-```
-
-## Миграции
-
-```bash
-alembic upgrade head          # применить
-alembic downgrade -1          # откатить одну
-alembic revision --autogenerate -m "describe_change"
-```
-
-**Legacy-БД** (раньше через `create_all`): `python scripts/stamp_legacy_db.py`, затем обычные upgrade для новых ревизий.
-
-## Тесты
+Локальные проверки (как в `.github/workflows/ci.yml`, Python 3.12):
 
 ```bash
 pip install -e ".[dev]"
-
-# Unit-тесты — fakeredis / AsyncMock.
-# Интеграционные (CRM, concurrency reviews, history SQL) — нужен PostgreSQL:
-export DATABASE_URL=postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery
-export APP_ENV=test
-pytest --cov=delivery_bot --cov-report=term-missing
-```
-
-PowerShell (часто удобнее порт `15432`, если `:5432` занят Hyper-V):
-
-```powershell
-docker run --rm -d --name delivery-pg-test `
-  -e POSTGRES_DB=delivery -e POSTGRES_USER=delivery -e POSTGRES_PASSWORD=delivery_secret `
-  -p 15432:5432 postgres:16-alpine
-$env:DATABASE_URL = "postgresql+asyncpg://delivery:delivery_secret@localhost:15432/delivery"
-$env:APP_ENV = "test"
+ruff check src tests
+ruff format --check src tests
+mypy
 pytest
 ```
 
-CI (`ci.yml`): lint (ruff) → mypy → pytest + Postgres 16 service container.
+`tests/test_history_queries.py`, `tests/test_review_concurrency.py` и `tests/test_escalation.py` открывают движок по `Settings.database_url`. В CI для этого поднят `postgres:16` и задан `DATABASE_URL=postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery`, `APP_ENV=test`. Тесты Redis в `tests/test_session_limits.py`, `tests/test_session_lock.py` и `tests/test_payment_idempotency.py` используют `fakeredis` (dev-зависимость `fakeredis[lua]`).
 
-## Возможности
+## Процессы
 
-- Согласие на ПДн, FSM в Redis (TTL 30 мин), AttemptLimiter на верификацию
-- Статус заказа (verify order_id + last4), кэш OMS 90 с, graceful degradation
-- Mini App: статус / карта OSM / история; `WEBAPP_DEV_BYPASS` только для local
-- Смена адреса/слота, полная и частичная отмена + mock refund
-- FAQ (+ опциональный LLM), претензии, отзывы, reorder, CRM handoff
-- PII-маскирование в structlog, Prometheus `/metrics`, `X-Request-ID`
+Бот (`src/delivery_bot/bot_app.py`) поднимает health-сервер aiohttp (`start_health_server`) и вешает `DialogSessionMiddleware` на `dp.update`. Лимитер попыток создаётся из `Settings.verify_max_attempts`, `verify_attempt_window_seconds`, `verify_block_seconds`. Клиенты OMS, post-delivery, FAQ и CRM ходят на `Settings.oms_base_url` с `Settings.api_key`. Трекинг в процессе бота — `MockTmsService`.
 
-Демо-заказы: `ORD-1001`…`ORD-1006`, телефон `+79001234567` (last4=`4567`).
+API (`create_api_app` в `src/delivery_bot/api/__init__.py`) в lifespan вызывает `seed_orders` и `seed_faq`, кладёт в `app.state` движок, фабрику сессий и Redis. Статика Mini App монтируется на `/ui`, если каталог `webapp/static` существует. Документация FastAPI: `/docs`, `/redoc`.
 
-## Архитектурные решения и компромиссы
+`GET /health` API без lifespan отвечает 200 и `service=api` (`tests/test_health.py`, `test_api_health_ok`). У бота `GET /health` отвечает 200 и `service=bot`; `GET /ready` без Redis — 503 и `checks.redis=false`, с Redis, отвечающим на ping, — 200 и `checks.redis=true` (`test_bot_health_ok`, `test_bot_ready_without_redis_not_ready`, `test_bot_ready_with_redis_ok`).
 
-**Моки интеграций.** Реальный OMS/платёжный шлюз/CRM недоступны в учебном контуре.
-Контракты (`/oms/v1`, `/crm/v1`, payments gateway) стабильны: подмена клиента не ломает бота и WebApp.
-Это осознанный trade-off: глубина сценариев важнее «настоящих» HTTP-вызовов.
+Воркер (`WorkerSettings` в `src/delivery_bot/worker/__init__.py`): функции `heartbeat`, `process_review_reminders`, `process_operator_replies`. Cron: heartbeat в минуты 0 и 30, напоминания об отзыве каждые 5 минут, доставка ответов оператора каждые 2 минуты. Очередь напоминаний — Redis sorted set `review:reminder:queue`.
 
-**Атомарный AttemptLimiter (Lua).** Раньше `TTL → INCR → EXPIRE → SET block → DEL` гонялись
-между процессами. Теперь один Redis Lua-скрипт: ровно `max_attempts - 1` разрешённых
-параллельных `hit()`, после блока счётчик удаляется вместе с TTL. `check()` остаётся
-advisory; решение — только в `hit()`.
+`ViberAdapter`, `WhatsAppAdapter` и `WebWidgetAdapter`: `is_ready()` возвращает `False` (`tests/test_health.py`, `test_stub_channels_not_ready`).
 
-**Идемпотентность платежей (SET NX).** Payload — JSON `{payment_id, amount}` с TTL 24 ч.
-Повтор с той же суммой возвращает сохранённый id; другая сумма → отказ
-(«ключ идемпотентности уже использован с другой суммой»). Если ключ истёк между
-`SET NX` и `GET` — одна повторная попытка.
+## Конфигурация
 
-**Лок диалоговой сессии.** Два быстрых апдейта Telegram затирали FSM (read-modify-write).
-Лок `dialog:lock:{channel}:{user_id}`: `SET NX PX 10000` + uuid-токен, ожидание до 5 с,
-освобождение compare-and-del (чужой лок не трогаем). При contention handler не вызывается —
-пользователь видит «Обрабатываю ваше предыдущее сообщение, секунду…».
+`Settings` (`src/delivery_bot/config.py`) читает окружение и файл `.env`. Имена ниже — переменные окружения этих полей. Значения — умолчания в коде.
 
-**Alembic вместо create_all в проде.** API поднимает схему через `alembic upgrade head`.
-`init_db`/`create_all` оставлены для тестов. БД, созданные старым путём:
-`scripts/stamp_legacy_db.py` → stamp `head`, дальше только новые ревизии.
-В initial-миграции перед `uq_reviews_order_user` удаляются дубли отзывов.
+| Переменная | Умолчание |
+| --- | --- |
+| `APP_ENV` | `local` |
+| `APP_NAME` | `delivery-bot` |
+| `LOG_LEVEL` | `INFO` |
+| `LOG_JSON` | `true` |
+| `TELEGRAM_BOT_TOKEN` | пустая строка |
+| `TELEGRAM_WEBAPP_URL` | `http://localhost:8000/ui` |
+| `DATABASE_URL` | `postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery` |
+| `REDIS_URL` | `redis://localhost:6379/0` |
+| `API_HOST` / `API_PORT` | `0.0.0.0` / `8000` |
+| `API_KEY` | `dev_api_key_change_me` |
+| `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASSWORD` | `admin` / `admin_change_me` |
+| `HEALTH_HOST` / `HEALTH_PORT` | `0.0.0.0` / `8081` |
+| `SESSION_TTL_SECONDS` | `1800` |
+| `CONSENT_TTL_SECONDS` | `31536000` |
+| `VERIFY_MAX_ATTEMPTS` | `5` |
+| `VERIFY_ATTEMPT_WINDOW_SECONDS` | `900` |
+| `VERIFY_BLOCK_SECONDS` | `1800` |
+| `OMS_BASE_URL` | `http://localhost:8000` |
+| `OMS_TIMEOUT_SECONDS` | `3.0` |
+| `STATUS_CACHE_TTL_SECONDS` | `90` |
+| `WEBAPP_DEV_BYPASS` | `true` |
+| `WEBAPP_BINDING_TTL_SECONDS` | `86400` |
+| `WEBAPP_INIT_DATA_MAX_AGE_SECONDS` | `86400` |
+| `LLM_FAQ_ENABLED` | `false` |
+| `PAYMENT_MOCK` | `true` |
+| `OMS_MOCK` | `true` |
+| `YANDEX_MAPS_API_KEY` | пустая строка |
+| `LLM_API_KEY` | пустая строка |
+| `LLM_BASE_URL` | `https://api.openai.com/v1` |
+| `LLM_MODEL` | `gpt-4o-mini` |
+| `LLM_MOCK_LATENCY_MS` | `80` |
+| `CLAIM_WINDOW_DAYS` | `14` |
+| `REVIEW_REMINDER_DELAY_SECONDS` | `3600` |
+| `METRICS_ENABLED` | `true` |
 
-**История заказов без N+1.** `list_full_by_last4` + `selectinload(items)` и один
-`WHERE order_id IN (...)` по отзывам: ≤ 3 SQL на `/webapp/v1/history`.
+`HOST_API_PORT`, `HOST_BOT_HEALTH_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` читает compose, не `Settings`. В compose `DATABASE_URL` и `REDIS_URL` указывают на хосты `postgres` и `redis`; у бота `TELEGRAM_WEBAPP_URL` по умолчанию `http://localhost:18000/ui`.
 
-**Graceful degradation OMS.** Статус читается из Redis-кэша; при недоступном OMS бот
-отдаёт последнее известное состояние / публичный факт «в пути», не падая целиком.
+`payment_mock` и `oms_mock` в `src/` встречаются только как поля `Settings`. `cancel_routes` и `change_routes` создают `MockPaymentGateway`. `bot_app` создаёт `MockTmsService`.
 
-**Production guard.** При `APP_ENV=production` Settings падает, если `API_KEY` /
-`ADMIN_BASIC_PASSWORD` на дефолтах, пустой `TELEGRAM_BOT_TOKEN` или `WEBAPP_DEV_BYPASS=true`.
+При `APP_ENV=production` валидатор `Settings._reject_insecure_production` описан в разделе ниже.
 
-## Структура
+`GET /metrics` API отдаёт тело `render_metrics()`. Пустое тело — ответ 404 с текстом `metrics disabled`.
 
-```
-src/delivery_bot/
-  channels/      # Telegram + stubs
-  handlers/      # aiogram handlers
-  dialog/        # FSM, intents, AttemptLimiter, sessions
-  middleware/    # session load + per-user lock
-  services/      # бизнес-логика и order_policy
-  integrations/  # OMS, TMS, Payments, CRM, FAQ, LLM
-  api/           # FastAPI
-  worker/        # ARQ
-  webapp/        # auth Mini App, bindings
-  security/      # PII masking
-migrations/      # Alembic (async)
-webapp/static/   # Mini App UI
-```
+## Данные
+
+Одна ревизия Alembic: `48a5fd403aa1` (`migrations/versions/48a5fd403aa1_initial_schema.py`). `migrations/env.py` берёт URL через `set_sqlalchemy_url(get_settings().database_url)` и гоняет миграции асинхронным движком.
+
+Таблицы ревизии и моделей в `src/delivery_bot/db/models.py`: `orders`, `order_items`, `faq_articles`, `claims`, `reviews`, `escalation_tickets`, `escalation_messages`. У `reviews` ограничение `uq_reviews_order_user` на `(order_id, user_id)`. Ревизия перед созданием ограничения удаляет дубликаты с меньшим `id`.
+
+`seed_orders` добавляет отсутствующие строки и не перезаписывает уже существующий `id`. Телефон `+79001234567` (последние 4 цифры `4567`): `ORD-1001` `delivering`, `ORD-1002` `paid`, `ORD-1004` `delivered`, `ORD-1005` `confirmed`, `ORD-1006` `paid`. Телефон `+79007654321`: `ORD-1003` `assembling`. Для уже лежащего `ORD-1004` в статусе `delivered` без `delivered_at` проставляется момент «сутки назад».
+
+Статусы `OrderStatus`: `created`, `confirmed`, `paid`, `assembling`, `ready`, `handed_to_courier`, `delivering`, `delivered`, `cancelled`.
+
+## HTTP
+
+Префикс `/oms/v1`, модуль `oms_routes.py`. Все четыре обработчика зависят от `require_api_key`. Сессия БД (`get_db_session`) делает `commit` после успешного выхода и `rollback` при исключении.
+
+| Метод и путь | Поведение в коде |
+| --- | --- |
+| `GET /oms/v1/orders/{order_id}/public` | `OmsRepository.get_public`; нет заказа — 404 |
+| `GET /oms/v1/orders/{order_id}` | полный `OrderDTO` через `to_order_dto`; нет заказа — 404 |
+| `POST /oms/v1/orders/verify` | `OmsRepository.verify` после `strip().upper()` у номера; несовпадение — `VerifyResponse(ok=False, reason="not_found_or_mismatch")` |
+| `GET /oms/v1/orders?phone_last4=` | query ровно 4 цифры; `OmsRepository.list_by_last4` |
+
+`require_api_key` сравнивает заголовок `X-API-Key` с `Settings.api_key` через `secrets.compare_digest`. Проверка статуса на `GET /oms/v1/cancel-reasons` — в разделе ниже.
+
+`/admin/v1/faq` и `/admin/v1/tickets`: `_require_admin` сравнивает HTTP Basic (`admin_basic_user`, `admin_basic_password`) через `secrets.compare_digest`. Несовпадение — 401, `detail="Unauthorized"`, заголовок `WWW-Authenticate: Basic`.
+
+Префикс `/webapp/v1`:
+
+| Метод и путь | Поведение в коде |
+| --- | --- |
+| `GET /webapp/v1/orders/{order_id}` | `get_webapp_user`, затем `WebAppBindingStore.can_access`. Нет доступа — 403, текст `Order is not linked to this user. Verify it in the bot first.` Нет заказа — 404. Тело `WebAppOrderView`, координаты из `MockTmsService.tracking_for` |
+| `GET /webapp/v1/history` | binding пользователя; без binding — пустой список. Иначе `OmsRepository.list_full_by_last4(binding.phone_last4, limit=12)` и отзывы этого `user_id` |
+
+`get_webapp_user`: при `webapp_dev_bypass` и `app_env` из `{local, test}` и заголовке `X-WebApp-Dev-User` возвращает пользователя с этим id. Иначе обязателен `X-Telegram-Init-Data`; `validate_init_data` при `TelegramInitDataError` даёт 401. Redis в `app.state` отсутствует — 503 `Redis is not configured`.
+
+`create_api_app` также подключает роутеры с префиксами `/oms/v1` (change, cancel, post-delivery, tms), `/faq/v1`, `/crm/v1`, `/admin/v1/faq`, `/admin/v1/tickets`.
+
+## Архитектурные решения
+
+Параллельные вызовы `AttemptLimiter.hit` (`src/delivery_bot/dialog/limits.py`, скрипт `_HIT_LUA`) разрешают ровно `max_attempts - 1` попыток, затем ставят блок и удаляют ключ счётчика. После блока `AttemptLimiter.check` возвращает `allowed=False`. `AttemptLimiter.reset` снова разрешает попытки и обнуляет счётчик.
+
+`DialogSessionMiddleware` (`src/delivery_bot/middleware/__init__.py`) сериализует апдейты одного пользователя: второй обработчик видит состояние, сохранённое первым. `_release_lock` (Lua `_RELEASE_LOCK_LUA`) удаляет ключ лока только при совпадении токена. Если лок не получен, handler не вызывается. `_extract_user_id` читает id из `Update.message.from_user` и из `data["event_from_user"]`.
+
+`RedisSessionStore.get` без записи создаёт сессию в состоянии `AWAITING_CONSENT`. `save` пишет сессию и, при принятом согласии, отдельный ключ согласия. `clear_session` удаляет сессию; следующая `get` сохраняет `consent_accepted=True` и ставит состояние `SESSION_EXPIRED`.
+
+`MockPaymentGateway.refund` (`src/delivery_bot/integrations/payments/mock.py`, `_idempotent_op`) с одним ключом и одной суммой при двух параллельных вызовах возвращает один `payment_id` и `ok=True`. Тот же ключ с другой суммой возвращает `ok=False`, в `message` есть «другой суммой». Разные ключи дают разные `payment_id`.
+
+`Settings._reject_insecure_production`: при `app_env=local` принимаются `api_key=dev_api_key_change_me`, `admin_basic_password=admin_change_me`, пустой `telegram_bot_token` и `webapp_dev_bypass=True`. При `app_env=production` этот набор поднимает `ValidationError` с текстом `Insecure production configuration`. Набор с другими секретами, непустым токеном и `webapp_dev_bypass=False` создаётся.
+
+`require_api_key` (`src/delivery_bot/api/auth.py`): `GET /oms/v1/cancel-reasons` с неверным `X-API-Key` отвечает 401 и `detail == "Invalid API key"`. Верный ключ из `get_settings().api_key` отвечает 200 и JSON-списком.
+
+`validate_init_data` (`src/delivery_bot/webapp/telegram_auth.py`) с верной HMAC-подписью возвращает `id` пользователя. Строка с испорченным hash поднимает `TelegramInitDataError`. `WebAppBindingStore.grant` (`src/delivery_bot/webapp/bindings.py`) открывает `can_access` этому пользователю на выданный `order_id`; другой `order_id` и другой пользователь получают `False`. `is_telegram_webapp_url` возвращает `True` для `https` с непустым netloc; для `http://localhost:8000/ui` и для `None` возвращает `False`. `_webapp_order_url` кладёт `order_id` в query; с аргументом `tab` добавляет `tab` в query и fragment `#tab=`.
+
+`phone_last4` (`src/delivery_bot/integrations/oms/repository.py`) для `+79001234567` и `900-123-45-67` возвращает `4567`. `OmsRepository.list_full_by_last4` оставляет в SQL цифры телефона через `regexp_replace` и применяет `LIMIT` уже к совпадениям: заказ с телефоном `+7 (900) 123-45-67` находится по `4567` при `limit=12`, когда в таблице есть 104 более новые строки с другим телефоном. Сборка списка истории вызовами `list_full_by_last4(..., limit=12)` и `PostDeliveryRepository.get_reviews_for_orders` для пяти заказов выполняет не больше трёх SQL-запросов.
+
+`normalize_order_id` превращает `1001` и `ord-1001` в `ORD-1001`; для `abc` возвращает `None`. `OrderStatusService.select_order` при уже лежащем в контексте `phone_last4` вызывает `verify` с этим last4 и оставляет состояние вне `AWAITING_PHONE_LAST4`. Без предыдущей верификации `select_order` переводит сессию в `AWAITING_PHONE_LAST4`. При ответе OMS `ok=False` текст `handle_input` содержит «попыток». В сценарии с публичным статусом «в пути» ввод `1001` ведёт в `AWAITING_PHONE_LAST4`, ввод `4567` записывает `verified_order_id=ORD-1001` и включает в текст имя курьера и адрес.
+
+`ReviewModel` задаёт `UniqueConstraint("order_id", "user_id", name="uq_reviews_order_user")`. Два параллельных `PostDeliveryRepository.submit_review` на одну пару `order_id`+`user_id` оставляют одну строку `reviews`; оба вызова возвращают эту пару. Тест создаёт таблицы через `Base.metadata.create_all`.
+
+`set_sqlalchemy_url` (`src/delivery_bot/db/alembic_url.py`) записывает URL так, что пароль `p%40ss` читается обратно тем же значением. `migrations/env.py` и `scripts/stamp_legacy_db.py` вызывают `set_sqlalchemy_url` и не вызывают `set_main_option("sqlalchemy.url"`. `stamp_legacy_db.main` завершает проверку БД своим `asyncio.run` и только потом вызывает `alembic stamp`; когда подменённый `stamp` сам вызывает `asyncio.run`, `main` возвращает 0.
+
+`MockTmsService.tracking_for` при `status="delivering"` и имени курьера ставит `gps_available=True` и непустые `courier_lat`/`courier_lon`. При `status="paid"` без имени курьера `gps_available=False` и `courier_lat is None`.
