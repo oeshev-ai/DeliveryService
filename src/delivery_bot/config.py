@@ -1,9 +1,14 @@
 """Конфигурация приложения из переменных окружения."""
 
+from __future__ import annotations
+
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_API_KEY = "dev_api_key_change_me"
+_DEFAULT_ADMIN_PASSWORD = "admin_change_me"
 
 
 class Settings(BaseSettings):
@@ -31,9 +36,9 @@ class Settings(BaseSettings):
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_key: str = "dev_api_key_change_me"
+    api_key: str = _DEFAULT_API_KEY
     admin_basic_user: str = "admin"
-    admin_basic_password: str = "admin_change_me"
+    admin_basic_password: str = _DEFAULT_ADMIN_PASSWORD
 
     health_host: str = "0.0.0.0"
     health_port: int = 8081
@@ -69,6 +74,24 @@ class Settings(BaseSettings):
     review_reminder_delay_seconds: int = 3600
 
     metrics_enabled: bool = True
+
+    @model_validator(mode="after")
+    def _reject_insecure_production(self) -> Settings:
+        """В production запрещает дефолтные секреты и webapp bypass."""
+        if self.app_env != "production":
+            return self
+        problems: list[str] = []
+        if self.api_key == _DEFAULT_API_KEY:
+            problems.append("API_KEY must not use the development default")
+        if self.admin_basic_password == _DEFAULT_ADMIN_PASSWORD:
+            problems.append("ADMIN_BASIC_PASSWORD must not use the development default")
+        if not self.telegram_bot_token.strip():
+            problems.append("TELEGRAM_BOT_TOKEN must be set")
+        if self.webapp_dev_bypass:
+            problems.append("WEBAPP_DEV_BYPASS must be false in production")
+        if problems:
+            raise ValueError("Insecure production configuration: " + "; ".join(problems))
+        return self
 
 
 @lru_cache
