@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -34,7 +34,7 @@ async def get_redis(request: Request) -> Redis:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Redis is not configured",
         )
-    return redis
+    return cast(Redis, redis)
 
 
 async def get_webapp_user(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,11 +43,14 @@ class PostDeliveryRepository:
         self._session = session
 
     async def get_claim_for_order(self, order_id: str, user_id: str) -> ClaimModel | None:
-        return await self._session.scalar(
-            select(ClaimModel).where(
-                ClaimModel.order_id == order_id.upper(),
-                ClaimModel.user_id == user_id,
-            )
+        return cast(
+            ClaimModel | None,
+            await self._session.scalar(
+                select(ClaimModel).where(
+                    ClaimModel.order_id == order_id.upper(),
+                    ClaimModel.user_id == user_id,
+                )
+            ),
         )
 
     async def create_claim(self, body: CreateClaimRequest) -> ClaimModel:
@@ -63,11 +68,14 @@ class PostDeliveryRepository:
         return row
 
     async def get_review(self, order_id: str, user_id: str) -> ReviewModel | None:
-        return await self._session.scalar(
-            select(ReviewModel).where(
-                ReviewModel.order_id == order_id.upper(),
-                ReviewModel.user_id == user_id,
-            )
+        return cast(
+            ReviewModel | None,
+            await self._session.scalar(
+                select(ReviewModel).where(
+                    ReviewModel.order_id == order_id.upper(),
+                    ReviewModel.user_id == user_id,
+                )
+            ),
         )
 
     async def submit_review(self, body: SubmitReviewRequest) -> ReviewModel:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -29,7 +30,7 @@ from delivery_bot.logging_setup import get_logger, setup_logging
 logger = get_logger(__name__)
 
 
-async def startup(ctx: dict) -> None:
+async def startup(ctx: dict[str, Any]) -> None:
     settings = get_settings()
     setup_logging(settings)
     ctx["settings"] = settings
@@ -43,7 +44,7 @@ async def startup(ctx: dict) -> None:
     logger.info("worker_started", env=settings.app_env)
 
 
-async def shutdown(ctx: dict) -> None:
+async def shutdown(ctx: dict[str, Any]) -> None:
     redis: Redis | None = ctx.get("redis")
     if redis is not None:
         await redis.aclose()
@@ -53,11 +54,11 @@ async def shutdown(ctx: dict) -> None:
     logger.info("worker_stopped")
 
 
-async def heartbeat(ctx: dict) -> None:
+async def heartbeat(ctx: dict[str, Any]) -> None:
     logger.debug("worker_heartbeat")
 
 
-async def process_review_reminders(ctx: dict) -> None:
+async def process_review_reminders(ctx: dict[str, Any]) -> None:
     """Отправляет отложенные напоминания об отзыве."""
     settings: Settings = ctx["settings"]
     redis: Redis = ctx["redis"]
@@ -140,7 +141,7 @@ async def process_review_reminders(ctx: dict) -> None:
     await bot.session.close()
 
 
-async def process_operator_replies(ctx: dict) -> None:
+async def process_operator_replies(ctx: dict[str, Any]) -> None:
     """Доставляет ответы оператора из CRM в Telegram."""
     settings: Settings = ctx["settings"]
     if not settings.telegram_bot_token or settings.telegram_bot_token.startswith("replace_me"):

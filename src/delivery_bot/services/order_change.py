@@ -12,6 +12,7 @@ from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient, OmsError
+from delivery_bot.integrations.oms.schemas import OrderDTO
 from delivery_bot.logging_setup import get_logger
 from delivery_bot.services.order_policy import (
     address_change_denied_reason,
@@ -320,7 +321,7 @@ class OrderChangeService:
             reply_markup=main_menu_keyboard(active_order_id=order_id),
         )
 
-    async def _load_order(self, session: DialogSession, order_id: str):
+    async def _load_order(self, session: DialogSession, order_id: str) -> OrderDTO | None:
         cached = await self._cache.get(order_id)
         if cached:
             return cached

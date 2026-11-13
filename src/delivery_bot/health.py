@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Final
+
 from aiohttp import web
 from redis.asyncio import Redis
 
@@ -12,7 +14,7 @@ from delivery_bot.redis_client import ping_redis
 
 logger = get_logger(__name__)
 
-REDIS_KEY = web.AppKey("redis", Redis | None)
+REDIS_KEY: Final[web.AppKey[Redis | None]] = web.AppKey("redis")
 
 
 async def health_handler(request: web.Request) -> web.Response:

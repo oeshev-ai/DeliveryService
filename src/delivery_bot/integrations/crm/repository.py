@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,10 +51,13 @@ class CrmRepository:
         self._session = session
 
     async def get_ticket(self, ticket_id: int) -> EscalationTicketModel | None:
-        return await self._session.scalar(
-            select(EscalationTicketModel)
-            .where(EscalationTicketModel.id == ticket_id)
-            .options(selectinload(EscalationTicketModel.messages))
+        return cast(
+            EscalationTicketModel | None,
+            await self._session.scalar(
+                select(EscalationTicketModel)
+                .where(EscalationTicketModel.id == ticket_id)
+                .options(selectinload(EscalationTicketModel.messages))
+            ),
         )
 
     async def get_active_ticket(
@@ -62,16 +66,19 @@ class CrmRepository:
         channel: str,
         user_id: str,
     ) -> EscalationTicketModel | None:
-        return await self._session.scalar(
-            select(EscalationTicketModel)
-            .where(
-                EscalationTicketModel.channel == channel,
-                EscalationTicketModel.user_id == user_id,
-                EscalationTicketModel.status.in_(("open", "assigned")),
-            )
-            .options(selectinload(EscalationTicketModel.messages))
-            .order_by(EscalationTicketModel.id.desc())
-            .limit(1)
+        return cast(
+            EscalationTicketModel | None,
+            await self._session.scalar(
+                select(EscalationTicketModel)
+                .where(
+                    EscalationTicketModel.channel == channel,
+                    EscalationTicketModel.user_id == user_id,
+                    EscalationTicketModel.status.in_(("open", "assigned")),
+                )
+                .options(selectinload(EscalationTicketModel.messages))
+                .order_by(EscalationTicketModel.id.desc())
+                .limit(1)
+            ),
         )
 
     async def get_ticket_dto(self, ticket_id: int) -> EscalationTicketDTO | None:

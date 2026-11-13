@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -53,7 +53,7 @@ async def _get_redis(request: Request) -> Redis:
     redis = getattr(request.app.state, "redis", None)
     if redis is None:
         raise HTTPException(status_code=503, detail="Redis is not configured")
-    return redis
+    return cast(Redis, redis)
 
 
 @router.get("/delivery/rules", response_model=DeliveryRulesDTO)

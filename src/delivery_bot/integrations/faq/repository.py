@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,8 +48,9 @@ class FaqRepository:
         return await self._session.get(FaqArticleModel, article_id)
 
     async def get_by_slug(self, slug: str) -> FaqArticleModel | None:
-        return await self._session.scalar(
-            select(FaqArticleModel).where(FaqArticleModel.slug == slug)
+        return cast(
+            FaqArticleModel | None,
+            await self._session.scalar(select(FaqArticleModel).where(FaqArticleModel.slug == slug)),
         )
 
     async def create(self, data: FaqArticleCreate) -> FaqArticleModel:

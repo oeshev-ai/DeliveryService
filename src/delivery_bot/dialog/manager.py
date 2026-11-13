@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from aiogram.types import InlineKeyboardMarkup
+
 from delivery_bot.dialog import texts
 from delivery_bot.dialog.intents import Intent, IntentMatch, IntentMatcher
 from delivery_bot.dialog.keyboards import (
@@ -26,7 +28,7 @@ class DialogResponse:
     """Ответ Dialog Manager для отправки в канал."""
 
     text: str
-    reply_markup: object | None = None
+    reply_markup: InlineKeyboardMarkup | None = None
     require_consent: bool = False
     delegate_status: bool = False
     force_new_status: bool = False
@@ -160,7 +162,7 @@ class DialogManager:
             reply_markup=self._menu(session),
         )
 
-    def _menu(self, session: DialogSession):
+    def _menu(self, session: DialogSession) -> InlineKeyboardMarkup:
         active = session.context.get("verified_order_id")
         return main_menu_keyboard(active_order_id=str(active) if active else None)
 

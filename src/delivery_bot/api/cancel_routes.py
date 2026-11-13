@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -43,7 +43,7 @@ async def _get_redis(request: Request) -> Redis:
     redis = getattr(request.app.state, "redis", None)
     if redis is None:
         raise HTTPException(status_code=503, detail="Redis is not configured")
-    return redis
+    return cast(Redis, redis)
 
 
 async def _do_full_cancel(
@@ -104,7 +104,7 @@ async def _do_full_cancel(
 async def list_cancel_reasons(
     _: None = Depends(_require_api_key),
 ) -> list[CancelReasonDTO]:
-    return [CancelReasonDTO(code=c, label=l) for c, l in CANCEL_REASONS]
+    return [CancelReasonDTO(code=code, label=label) for code, label in CANCEL_REASONS]
 
 
 @router.post("/orders/cancel", response_model=CancelResponse)

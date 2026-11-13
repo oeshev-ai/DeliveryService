@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -13,6 +13,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from delivery_bot.observability.metrics import HTTP_LATENCY, HTTP_REQUESTS, metrics_enabled
+
+CallNext = Callable[[Request], Awaitable[Response]]
 
 _PATH_ID_RE = re.compile(r"(/orders/)(ORD-\d+|[^/]+)|" r"(/tickets/)(\d+)|" r"(/articles/)(\d+)")
 
@@ -35,7 +37,7 @@ def normalize_path(path: str) -> str:
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """X-Request-ID + structlog contextvars."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: CallNext) -> Response:
         request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
@@ -51,7 +53,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 class MetricsMiddleware(BaseHTTPMiddleware):
     """Счётчики и latency для Prometheus."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: CallNext) -> Response:
         if not metrics_enabled() or request.url.path == "/metrics":
             return await call_next(request)
 

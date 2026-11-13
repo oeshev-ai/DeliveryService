@@ -2,43 +2,43 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from delivery_bot.config import get_settings
 
+_HAS_PROM: bool
+_prom_generate_latest: Callable[..., bytes] | None
 try:
-    from prometheus_client import (
-        CONTENT_TYPE_LATEST,
-        Counter,
-        Histogram,
-        generate_latest,
-    )
+    from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram
+    from prometheus_client import generate_latest as _prom_generate_latest_impl
 
     _HAS_PROM = True
+    _prom_generate_latest = _prom_generate_latest_impl
 except ImportError:  # pragma: no cover - fallback без зависимости
     _HAS_PROM = False
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+    _prom_generate_latest = None
 
     class Counter:  # type: ignore[no-redef]
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def labels(self, **kwargs):
+        def labels(self, **kwargs: Any) -> Any:
             return self
 
         def inc(self, amount: float = 1) -> None:
             pass
 
     class Histogram:  # type: ignore[no-redef]
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def labels(self, **kwargs):
+        def labels(self, **kwargs: Any) -> Any:
             return self
 
         def observe(self, amount: float) -> None:
             pass
-
-    def generate_latest() -> bytes:
-        return b""
 
 
 HTTP_REQUESTS = Counter(
@@ -80,9 +80,9 @@ def setup_metrics() -> None:
 
 
 def render_metrics() -> tuple[bytes, str]:
-    if not metrics_enabled() or not _HAS_PROM:
+    if not metrics_enabled() or not _HAS_PROM or _prom_generate_latest is None:
         return b"", CONTENT_TYPE_LATEST
-    return generate_latest(), CONTENT_TYPE_LATEST
+    return _prom_generate_latest(), CONTENT_TYPE_LATEST
 
 
 def inc_bot_intent(intent: str) -> None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -64,7 +66,7 @@ class OmsRepository:
             .where(OrderModel.id == order_id.upper())
             .options(selectinload(OrderModel.items))
         )
-        return await self._session.scalar(stmt)
+        return cast(OrderModel | None, await self._session.scalar(stmt))
 
     async def get_public(self, order_id: str) -> OrderPublicDTO | None:
         order = await self.get_by_id(order_id)

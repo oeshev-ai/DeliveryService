@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from typing import cast
 
 import structlog
 
@@ -24,7 +25,7 @@ def setup_logging(settings: Settings) -> None:
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
-        mask_pii_processor,
+        cast(structlog.types.Processor, mask_pii_processor),
     ]
 
     if settings.log_json:
@@ -64,4 +65,4 @@ def setup_logging(settings: Settings) -> None:
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Фабрика логгеров для модулей пакета."""
-    return structlog.get_logger(name)
+    return cast(structlog.stdlib.BoundLogger, structlog.get_logger(name))

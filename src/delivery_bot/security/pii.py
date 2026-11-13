@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse, urlunparse
 
 _PHONE_RE = re.compile(r"(\+?\d[\d\s\-()]{8,}\d)")
@@ -97,4 +97,4 @@ def mask_pii_processor(
     event_dict: dict[str, Any],
 ) -> dict[str, Any]:
     """Structlog processor: маскирует PII в полях события."""
-    return mask_pii_in_mapping(event_dict)
+    return cast(dict[str, Any], mask_pii_in_mapping(event_dict))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from redis.asyncio import Redis
@@ -56,14 +56,14 @@ async def _get_redis(request: Request) -> Redis:
     redis = getattr(request.app.state, "redis", None)
     if redis is None:
         raise HTTPException(status_code=503, detail="Redis is not configured")
-    return redis
+    return cast(Redis, redis)
 
 
 @router.get("/claim-reasons", response_model=list[ClaimReasonDTO])
 async def list_claim_reasons(
     _: None = Depends(_require_api_key),
 ) -> list[ClaimReasonDTO]:
-    return [ClaimReasonDTO(code=c, label=l) for c, l in CLAIM_REASONS]
+    return [ClaimReasonDTO(code=code, label=label) for code, label in CLAIM_REASONS]
 
 
 @router.post("/claims", response_model=ClaimResponse)

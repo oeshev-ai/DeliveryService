@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from aiogram.types import InlineKeyboardMarkup
+
 from delivery_bot.dialog import texts
 from delivery_bot.dialog.keyboards import (
     is_telegram_webapp_url,
@@ -59,7 +61,7 @@ class OrderStatusService:
     def _limit_subject(self, session: DialogSession) -> str:
         return f"{session.channel}:{session.user_id}"
 
-    def _status_markup(self, order_id: str):
+    def _status_markup(self, order_id: str) -> InlineKeyboardMarkup:
         return order_status_keyboard(order_id, webapp_url=self._webapp_url)
 
     def _status_footer(self) -> str:

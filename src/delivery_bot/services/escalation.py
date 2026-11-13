@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from delivery_bot.dialog import texts
@@ -207,10 +209,8 @@ class EscalationService:
     async def _close_handoff(self, session: DialogSession) -> DialogResponse:
         ticket_id = session.context.get("escalation_ticket_id")
         if ticket_id:
-            try:
+            with suppress(CrmError):
                 await self._crm.resolve_ticket(int(ticket_id))
-            except CrmError:
-                pass
         session.state = DialogState.MAIN_MENU
         session.context.pop("escalation_ticket_id", None)
         session.context.pop("escalation_reason", None)

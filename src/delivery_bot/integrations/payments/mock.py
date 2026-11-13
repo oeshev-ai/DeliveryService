@@ -64,10 +64,7 @@ class MockPaymentGateway:
                 message="Платёж уже был выполнен ранее",
             )
 
-        if amount == 0:
-            payment_id = f"pay_zero_{uuid4().hex[:8]}"
-        else:
-            payment_id = f"pay_{uuid4().hex[:12]}"
+        payment_id = f"pay_zero_{uuid4().hex[:8]}" if amount == 0 else f"pay_{uuid4().hex[:12]}"
 
         await self._redis.set(
             self._idem_key(idempotency_key),
@@ -120,10 +117,7 @@ class MockPaymentGateway:
                 message="Возврат уже был выполнен ранее",
             )
 
-        if amount == 0:
-            refund_id = f"rfnd_zero_{uuid4().hex[:8]}"
-        else:
-            refund_id = f"rfnd_{uuid4().hex[:12]}"
+        refund_id = f"rfnd_zero_{uuid4().hex[:8]}" if amount == 0 else f"rfnd_{uuid4().hex[:12]}"
 
         await self._redis.set(key, refund_id, ex=86_400)
         logger.info(
