@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated, cast
+from typing import cast
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from delivery_bot.api.auth import require_api_key
 from delivery_bot.api.oms_routes import get_db_session
-from delivery_bot.config import Settings, get_settings
 from delivery_bot.integrations.oms.change_schemas import (
     AddressQuoteRequest,
     AddressQuoteResponse,
@@ -38,17 +38,6 @@ from delivery_bot.services.order_policy import (
 router = APIRouter(prefix="/oms/v1", tags=["order-change"])
 
 
-async def _require_api_key(
-    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
-    settings: Settings = Depends(get_settings),
-) -> None:
-    if not x_api_key or x_api_key != settings.api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-        )
-
-
 async def _get_redis(request: Request) -> Redis:
     redis = getattr(request.app.state, "redis", None)
     if redis is None:
@@ -58,7 +47,7 @@ async def _get_redis(request: Request) -> Redis:
 
 @router.get("/delivery/rules", response_model=DeliveryRulesDTO)
 async def get_delivery_rules(
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
 ) -> DeliveryRulesDTO:
     """Минимальная сумма и слоты доставки (из API)."""
     return DeliveryRulesDTO(
@@ -70,7 +59,7 @@ async def get_delivery_rules(
 @router.post("/orders/quote-address", response_model=AddressQuoteResponse)
 async def quote_address(
     body: AddressQuoteRequest,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> AddressQuoteResponse:
     """Проверка зоны и расчёт доплаты за смену адреса."""
@@ -104,7 +93,7 @@ async def quote_address(
 @router.post("/orders/change-address", response_model=ApplyAddressChangeResponse)
 async def change_address(
     body: ApplyAddressChangeRequest,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(_get_redis),
 ) -> ApplyAddressChangeResponse:
@@ -154,7 +143,7 @@ async def change_address(
 @router.post("/orders/change-slot", response_model=ApplySlotChangeResponse)
 async def change_slot(
     body: ApplySlotChangeRequest,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> ApplySlotChangeResponse:
     """Меняет слот/время доставки."""

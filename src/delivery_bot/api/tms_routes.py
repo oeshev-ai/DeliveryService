@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from delivery_bot.api.auth import require_api_key
 from delivery_bot.api.oms_routes import get_db_session
-from delivery_bot.config import Settings, get_settings
 from delivery_bot.integrations.oms.repository import OmsRepository
 from delivery_bot.integrations.tms.mock import MockTmsService
 
@@ -33,21 +31,10 @@ class TrackingDTO(BaseModel):
     message: str | None = None
 
 
-async def _require_api_key(
-    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
-    settings: Settings = Depends(get_settings),
-) -> None:
-    if not x_api_key or x_api_key != settings.api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-        )
-
-
 @router.get("/orders/{order_id}/tracking", response_model=TrackingDTO)
 async def get_tracking(
     order_id: str,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> TrackingDTO:
     """Трекинг курьера (mock TMS)."""

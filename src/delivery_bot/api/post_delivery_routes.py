@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from delivery_bot.api.auth import require_api_key
 from delivery_bot.api.oms_routes import get_db_session
 from delivery_bot.config import Settings, get_settings
 from delivery_bot.integrations.oms.post_delivery_repository import (
@@ -41,17 +42,6 @@ router = APIRouter(prefix="/oms/v1", tags=["post-delivery"])
 _REASON_LABELS = dict(CLAIM_REASONS)
 
 
-async def _require_api_key(
-    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
-    settings: Settings = Depends(get_settings),
-) -> None:
-    if not x_api_key or x_api_key != settings.api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-        )
-
-
 async def _get_redis(request: Request) -> Redis:
     redis = getattr(request.app.state, "redis", None)
     if redis is None:
@@ -61,7 +51,7 @@ async def _get_redis(request: Request) -> Redis:
 
 @router.get("/claim-reasons", response_model=list[ClaimReasonDTO])
 async def list_claim_reasons(
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
 ) -> list[ClaimReasonDTO]:
     return [ClaimReasonDTO(code=code, label=label) for code, label in CLAIM_REASONS]
 
@@ -69,7 +59,7 @@ async def list_claim_reasons(
 @router.post("/claims", response_model=ClaimResponse)
 async def create_claim(
     body: CreateClaimRequest,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> ClaimResponse:
     if body.reason_code not in _REASON_LABELS:
@@ -114,7 +104,7 @@ async def create_claim(
 async def review_status(
     order_id: str,
     user_id: Annotated[str, Query(min_length=1)],
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> ReviewStatusResponse:
     oms = OmsRepository(session)
@@ -136,7 +126,7 @@ async def review_status(
 @router.post("/reviews", response_model=ReviewResponse)
 async def submit_review(
     body: SubmitReviewRequest,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> ReviewResponse:
     oms = OmsRepository(session)
@@ -171,7 +161,7 @@ async def submit_review(
 async def skip_review(
     body: SkipReviewRequest,
     request: Request,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(_get_redis),
     settings: Settings = Depends(get_settings),
@@ -209,7 +199,7 @@ async def skip_review(
 @router.get("/orders/{order_id}/reorder-preview", response_model=ReorderPreviewResponse)
 async def reorder_preview(
     order_id: str,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
 ) -> ReorderPreviewResponse:
     return await build_reorder_preview(session, order_id)
@@ -218,7 +208,7 @@ async def reorder_preview(
 @router.post("/orders/reorder", response_model=ReorderConfirmResponse)
 async def reorder_confirm(
     body: ReorderConfirmRequest,
-    _: None = Depends(_require_api_key),
+    _: None = Depends(require_api_key),
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> ReorderConfirmResponse:
