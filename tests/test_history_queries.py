@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -77,6 +78,67 @@ async def test_history_uses_at_most_three_queries() -> None:
 
     assert len(items) == 5
     assert len(statements) <= 3
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_list_full_by_last4_filters_in_sql() -> None:
+    """last4 отсекается в SQL: старый заказ не теряется за LIMIT чужих строк.
+
+    Телефон с разделителями должен совпасть по цифрам, как ``phone_last4``.
+    """
+    get_settings.cache_clear()
+    settings = get_settings()
+    engine = create_engine(settings)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    factory = create_session_factory(engine)
+    base = datetime(2024, 1, 1, tzinfo=UTC)
+    target_id = "ORD-TARGET"
+
+    async with session_scope(factory) as session:
+        session.add(
+            OrderModel(
+                id=target_id,
+                phone="+7 (900) 123-45-67",
+                status="delivered",
+                address="Old",
+                delivery_slot="slot",
+                total_amount=Decimal("10.00"),
+                created_at=base,
+            )
+        )
+        for i in range(104):
+            session.add(
+                OrderModel(
+                    id=f"ORD-N{i:04d}",
+                    phone="+79000000000",
+                    status="paid",
+                    address="Noise",
+                    delivery_slot="slot",
+                    total_amount=Decimal("1.00"),
+                    created_at=base + timedelta(minutes=i + 1),
+                )
+            )
+
+    statements: list[str] = []
+
+    def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany) -> None:
+        statements.append(str(statement))
+
+    event.listen(engine.sync_engine, "before_cursor_execute", _before_cursor_execute)
+    try:
+        async with session_scope(factory) as session:
+            repo = OmsRepository(session)
+            orders = await repo.list_full_by_last4("4567", limit=12)
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", _before_cursor_execute)
+
+    assert [o.id for o in orders] == [target_id]
+    order_sql = " ".join(statements).lower()
+    assert "regexp_replace" in order_sql
     await engine.dispose()
 
 
