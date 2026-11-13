@@ -20,7 +20,11 @@ def _load_stamp() -> ModuleType:
 
 
 class _Conn:
-    """Ответ information_schema: orders есть, alembic_version нет."""
+    """Ответ information_schema для сценария stamp."""
+
+    def __init__(self, *, orders: int = 1, phone_last4: int = 0) -> None:
+        self._orders = orders
+        self._phone_last4 = phone_last4
 
     async def scalar(self, statement: object, *_args: object, **_kwargs: object) -> int:
         sql = str(statement)
@@ -28,8 +32,10 @@ class _Conn:
             return 0
         if "alembic_version" in sql:
             return 0
+        if "phone_last4" in sql:
+            return self._phone_last4
         if "orders" in sql:
-            return 1
+            return self._orders
         raise AssertionError(sql)
 
     async def __aenter__(self) -> _Conn:
@@ -40,8 +46,11 @@ class _Conn:
 
 
 class _Engine:
+    def __init__(self, conn: _Conn | None = None) -> None:
+        self._conn = conn or _Conn()
+
     def connect(self) -> _Conn:
-        return _Conn()
+        return self._conn
 
     async def dispose(self) -> None:
         return None
@@ -72,13 +81,19 @@ def test_percent_encoded_database_url_roundtrips() -> None:
 
 
 def test_stamp_legacy_cli_is_not_nested_in_running_loop(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``alembic stamp`` сам вызывает ``asyncio.run`` — его нельзя звать из цикла."""
+    """``alembic stamp`` сам вызывает ``asyncio.run`` — его нельзя звать из цикла.
+
+    Без колонки ``phone_last4`` ревизия — baseline initial_schema, не head:
+    следующий ``upgrade head`` донакатывает эту колонку.
+    """
     import alembic.command
 
     module = _load_stamp()
     monkeypatch.setattr(module, "create_async_engine", lambda _url: _Engine())
+    stamped: list[str] = []
 
-    def _fake_stamp(_cfg: object, _rev: str) -> None:
+    def _fake_stamp(_cfg: object, rev: str) -> None:
+        stamped.append(rev)
         asyncio.run(asyncio.sleep(0))
 
     monkeypatch.setattr(alembic.command, "stamp", _fake_stamp)
@@ -86,3 +101,49 @@ def test_stamp_legacy_cli_is_not_nested_in_running_loop(monkeypatch: pytest.Monk
     entry = module.main()
     rc = asyncio.run(entry) if asyncio.iscoroutine(entry) else entry
     assert rc == 0
+    assert stamped == ["48a5fd403aa1"]
+
+
+def test_stamp_legacy_with_phone_last4_uses_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    """create_all текущих моделей уже содержит phone_last4 — stamp head."""
+    import alembic.command
+
+    module = _load_stamp()
+    monkeypatch.setattr(
+        module,
+        "create_async_engine",
+        lambda _url: _Engine(_Conn(phone_last4=1)),
+    )
+    stamped: list[str] = []
+    monkeypatch.setattr(alembic.command, "stamp", lambda _cfg, rev: stamped.append(rev))
+
+    assert module.main() == 0
+    assert stamped == ["head"]
+
+
+def test_stamp_legacy_fresh_db_skips_stamp(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Пустая БД не штампуется, код возврата 0 — дальше идёт upgrade head."""
+    import alembic.command
+
+    module = _load_stamp()
+    monkeypatch.setattr(
+        module,
+        "create_async_engine",
+        lambda _url: _Engine(_Conn(orders=0)),
+    )
+
+    def _forbid_stamp(*_args: object) -> None:
+        raise AssertionError("stamp")
+
+    monkeypatch.setattr(alembic.command, "stamp", _forbid_stamp)
+
+    assert module.main() == 0
+
+
+def test_api_image_stamps_legacy_before_upgrade() -> None:
+    """Контейнер api не создаёт таблицы поверх уже существующей схемы."""
+    compose = Path("docker-compose.yml").read_text(encoding="utf-8")
+    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
+    assert "python scripts/stamp_legacy_db.py" in compose
+    assert compose.index("stamp_legacy_db.py") < compose.index("alembic upgrade head")
+    assert "COPY scripts ./scripts" in dockerfile

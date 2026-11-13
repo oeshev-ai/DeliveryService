@@ -1,8 +1,13 @@
-"""Помечает legacy-БД (созданную через create_all) как актуальную для Alembic.
+"""Помечает legacy-БД (созданную через create_all) ревизией Alembic.
 
-Запускать один раз на существующей БД, если таблицы уже есть, а
-``alembic_version`` пуста / отсутствует. После stamp последующие миграции
-накатываются обычным ``alembic upgrade head``.
+Если таблицы уже есть, а ``alembic_version`` пуста, ``alembic upgrade head``
+пытается создать их снова. Скрипт ставит ревизию по фактической схеме:
+
+* нет колонки ``orders.phone_last4`` — ``48a5fd403aa1``, затем upgrade
+  донакатывает эту колонку;
+* колонка уже есть (create_all текущих моделей) — ``head``.
+
+Пустая БД не штампуется: код возврата 0, схему создаёт ``alembic upgrade head``.
 
 ``alembic stamp`` выполняет ``env.py``, который вызывает ``asyncio.run``.
 Поэтому stamp запускается только после того, как проверка БД уже
@@ -16,7 +21,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -24,14 +28,17 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from delivery_bot.config import get_settings
 from delivery_bot.db.alembic_url import set_sqlalchemy_url
 
+# Схема initial_schema, ещё без хранимой колонки orders.phone_last4.
+_LEGACY_BASELINE = "48a5fd403aa1"
+
 
 async def legacy_db_action(database_url: str) -> str:
     """Определяет, что делать с уже существующей БД.
 
     Returns:
-        ``missing`` — нет таблицы orders, нужен ``alembic upgrade head``.
+        ``missing`` — нет таблицы orders.
         ``stamped`` — alembic_version уже заполнена.
-        ``stamp`` — таблицы есть, ревизия не проставлена.
+        ``stamp:<rev>`` — таблицы есть, ревизию ``<rev>`` нужно проставить.
     """
     engine: AsyncEngine = create_async_engine(database_url)
     try:
@@ -56,31 +63,42 @@ async def legacy_db_action(database_url: str) -> str:
                 if current:
                     print(f"already stamped at {current}; nothing to do")
                     return "stamped"
-        return "stamp"
+
+            has_last4 = await conn.scalar(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'orders' "
+                    "AND column_name = 'phone_last4'"
+                )
+            )
+        revision = "head" if has_last4 else _LEGACY_BASELINE
+        return f"stamp:{revision}"
     finally:
         await engine.dispose()
 
 
 def main() -> int:
-    """CLI: проверка БД и ``alembic stamp head`` вне event loop."""
+    """CLI: проверка БД и ``alembic stamp`` вне event loop.
+
+    Returns:
+        0 — штамп не нужен или проставлен. Дальше вызывают ``alembic upgrade head``.
+    """
     settings = get_settings()
     action = asyncio.run(legacy_db_action(settings.database_url))
     if action == "missing":
-        print(
-            "orders table missing — use `alembic upgrade head` on a fresh DB",
-            file=sys.stderr,
-        )
-        return 1
+        print("orders table missing; alembic upgrade head will create the schema")
+        return 0
     if action == "stamped":
         return 0
 
+    revision = action.removeprefix("stamp:")
     from alembic import command
     from alembic.config import Config
 
     cfg = Config("alembic.ini")
     set_sqlalchemy_url(cfg, settings.database_url)
-    command.stamp(cfg, "head")
-    print("stamped alembic head for legacy schema")
+    command.stamp(cfg, revision)
+    print(f"stamped alembic {revision} for legacy schema")
     return 0
 
 

@@ -37,7 +37,8 @@ services:
   api:
     build: .
     command: >-
-      sh -c "alembic upgrade head &&
+      sh -c "python scripts/stamp_legacy_db.py &&
+      alembic upgrade head &&
       uvicorn delivery_bot.api.app:app --host 0.0.0.0 --port 8000"
     env_file:
       - .env

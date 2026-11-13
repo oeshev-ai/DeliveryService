@@ -16,7 +16,7 @@ docker compose up -d --build
 
 | Сервис | Команда | Зависимости |
 | --- | --- | --- |
-| `api` | `alembic upgrade head`, затем uvicorn на `0.0.0.0:8000` | postgres и redis `service_healthy`; healthcheck `GET /ready` |
+| `api` | `python scripts/stamp_legacy_db.py`, затем `alembic upgrade head` и uvicorn на `0.0.0.0:8000` | postgres и redis `service_healthy`; healthcheck `GET /ready` |
 | `bot` | `python -m delivery_bot` | postgres, redis и api `service_healthy`; `OMS_BASE_URL=http://api:8000`; healthcheck `GET http://localhost:8081/health` |
 | `worker` | `python -m delivery_bot.worker` | redis `service_healthy` |
 
