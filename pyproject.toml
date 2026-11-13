@@ -9,30 +9,30 @@ description = "Customer support chatbot for a delivery service"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "aiogram==3.15.0",
-    "aiohttp==3.10.10",
-    "fastapi==0.115.5",
-    "uvicorn[standard]==0.32.1",
-    "pydantic==2.9.2",
-    "pydantic-settings==2.6.1",
-    "httpx==0.27.2",
-    "structlog==24.4.0",
-    "redis==5.2.0",
-    "arq==0.26.1",
-    "SQLAlchemy[asyncio]==2.0.36",
+    "aiogram==3.31.0",
+    "aiohttp==3.14.5",
+    "fastapi==0.115.14",
+    "uvicorn[standard]==0.34.3",
+    "pydantic==2.11.9",
+    "pydantic-settings==2.10.1",
+    "httpx==0.28.1",
+    "structlog==25.4.0",
+    "redis==5.3.1",
+    "arq==0.26.3",
+    "SQLAlchemy[asyncio]==2.0.43",
     "asyncpg==0.30.0",
-    "python-dotenv==1.0.1",
-    "prometheus-client==0.21.0",
+    "python-dotenv==1.1.1",
+    "prometheus-client==0.22.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.3",
-    "pytest-asyncio==0.24.0",
-    "pytest-cov==6.0.0",
-    "fakeredis[lua]==2.26.1",
-    "ruff==0.8.0",
-    "mypy==1.13.0",
+    "pytest==8.4.2",
+    "pytest-asyncio==0.26.0",
+    "pytest-cov==6.2.1",
+    "fakeredis[lua]==2.31.3",
+    "ruff==0.12.12",
+    "mypy==1.17.1",
 ]
 
 [tool.setuptools.packages.find]
