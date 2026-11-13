@@ -73,9 +73,7 @@ class FaqClient:
 
     async def search(self, query: str) -> FaqSearchResponse:
         try:
-            resp = await self._http().get(
-                "/faq/v1/search", params={"q": query}
-            )
+            resp = await self._http().get("/faq/v1/search", params={"q": query})
         except httpx.HTTPError as exc:
             raise FaqError("FAQ unavailable") from exc
         if resp.status_code >= 400:

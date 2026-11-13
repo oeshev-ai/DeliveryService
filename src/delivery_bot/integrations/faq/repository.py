@@ -39,9 +39,7 @@ class FaqRepository:
         return [to_dto(r) for r in result.all()]
 
     async def list_all(self) -> list[FaqArticleDTO]:
-        result = await self._session.scalars(
-            select(FaqArticleModel).order_by(FaqArticleModel.id)
-        )
+        result = await self._session.scalars(select(FaqArticleModel).order_by(FaqArticleModel.id))
         return [to_dto(r) for r in result.all()]
 
     async def get(self, article_id: int) -> FaqArticleModel | None:
@@ -58,9 +56,7 @@ class FaqRepository:
         await self._session.flush()
         return row
 
-    async def update(
-        self, row: FaqArticleModel, data: FaqArticleUpdate
-    ) -> FaqArticleModel:
+    async def update(self, row: FaqArticleModel, data: FaqArticleUpdate) -> FaqArticleModel:
         for key, value in data.model_dump(exclude_unset=True).items():
             setattr(row, key, value)
         await self._session.flush()

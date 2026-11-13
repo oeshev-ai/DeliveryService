@@ -137,9 +137,5 @@ class MockPaymentGateway:
             ok=True,
             payment_id=refund_id,
             amount=amount,
-            message=(
-                f"Возврат {amount} ₽ оформлен"
-                if amount > 0
-                else "Возврат не требуется"
-            ),
+            message=(f"Возврат {amount} ₽ оформлен" if amount > 0 else "Возврат не требуется"),
         )

@@ -1,7 +1,7 @@
 """Тесты health-эндпоинтов."""
 
-from aiohttp.test_utils import TestClient, TestServer
 import pytest
+from aiohttp.test_utils import TestClient, TestServer
 from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient as FastAPITestClient
 
@@ -62,6 +62,4 @@ async def test_stub_channels_not_ready() -> None:
     stubs = [ViberAdapter(), WhatsAppAdapter(), WebWidgetAdapter()]
     for adapter in stubs:
         assert await adapter.is_ready() is False
-        await adapter.send_message(
-            OutboundMessage(chat_id="1", text="ping")
-        )
+        await adapter.send_message(OutboundMessage(chat_id="1", text="ping"))

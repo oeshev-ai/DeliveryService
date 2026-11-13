@@ -5,17 +5,17 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from delivery_bot.dialog import texts
+from delivery_bot.dialog.keyboards import (
+    is_telegram_webapp_url,
+    main_menu_keyboard,
+    order_list_keyboard,
+    order_status_keyboard,
+)
 from delivery_bot.dialog.limits import AttemptLimiter
 from delivery_bot.dialog.manager import DialogResponse
 from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
-from delivery_bot.dialog import texts
-from delivery_bot.dialog.keyboards import (
-    main_menu_keyboard,
-    order_list_keyboard,
-    order_status_keyboard,
-    is_telegram_webapp_url,
-)
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient, OmsError
 from delivery_bot.logging_setup import get_logger
@@ -242,10 +242,7 @@ class OrderStatusService:
             siblings = await self._oms.list_by_last4(last4)
             others = [s for s in siblings if s.id != order.id]
             if others:
-                extras_note = (
-                    "\n\nДругие заказы с этим телефоном:\n"
-                    + format_orders_list(siblings)
-                )
+                extras_note = "\n\nДругие заказы с этим телефоном:\n" + format_orders_list(siblings)
                 return await self._with_review_offer(
                     session,
                     order.id,
@@ -309,15 +306,12 @@ class OrderStatusService:
                 if result.ok and result.order:
                     await self._cache.set(result.order)
                     session.state = DialogState.ORDER_STATUS
-                    await self._grant_webapp_access(
-                        session, result.order.id, str(last4)
-                    )
+                    await self._grant_webapp_access(session, result.order.id, str(last4))
                     return await self._with_review_offer(
                         session,
                         result.order.id,
                         DialogResponse(
-                            text=format_order_status(result.order)
-                            + self._status_footer(),
+                            text=format_order_status(result.order) + self._status_footer(),
                             reply_markup=self._status_markup(result.order.id),
                         ),
                     )
@@ -327,9 +321,7 @@ class OrderStatusService:
         session.context["pending_order_id"] = order_id
         session.state = DialogState.AWAITING_PHONE_LAST4
         return DialogResponse(
-            text=(
-                f"Для заказа <b>{order_id}</b> подтвердите последние 4 цифры телефона."
-            ),
+            text=(f"Для заказа <b>{order_id}</b> подтвердите последние 4 цифры телефона."),
         )
 
 

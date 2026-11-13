@@ -11,15 +11,15 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from delivery_bot import __version__
-from delivery_bot.api.middleware import MetricsMiddleware, RequestContextMiddleware
-from delivery_bot.api.crm_routes import router as crm_router
 from delivery_bot.api.admin_crm_routes import router as admin_crm_router
 from delivery_bot.api.admin_faq_routes import router as admin_faq_router
 from delivery_bot.api.cancel_routes import router as cancel_router
 from delivery_bot.api.change_routes import router as change_router
-from delivery_bot.api.post_delivery_routes import router as post_delivery_router
+from delivery_bot.api.crm_routes import router as crm_router
 from delivery_bot.api.faq_routes import router as faq_router
+from delivery_bot.api.middleware import MetricsMiddleware, RequestContextMiddleware
 from delivery_bot.api.oms_routes import router as oms_router
+from delivery_bot.api.post_delivery_routes import router as post_delivery_router
 from delivery_bot.api.tms_routes import router as tms_router
 from delivery_bot.api.webapp_routes import router as webapp_router
 from delivery_bot.config import get_settings

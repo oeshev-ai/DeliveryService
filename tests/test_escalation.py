@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 
 from delivery_bot.config import get_settings
-from delivery_bot.dialog.intents import Intent, IntentMatch
-from delivery_bot.dialog.manager import DialogManager
-from delivery_bot.dialog.session import DialogSession
-from delivery_bot.dialog.states import DialogState
 from delivery_bot.db.session import (
     create_engine,
     create_session_factory,
     init_db,
     session_scope,
 )
+from delivery_bot.dialog.intents import Intent, IntentMatch
+from delivery_bot.dialog.manager import DialogManager
+from delivery_bot.dialog.session import DialogSession
+from delivery_bot.dialog.states import DialogState
 from delivery_bot.integrations.crm.repository import CrmRepository
 from delivery_bot.integrations.crm.schemas import (
     CreateEscalationTicketRequest,
@@ -96,8 +96,8 @@ async def test_escalation_service_creates_ticket() -> None:
         reason="operator",
         status="open",
         transcript="Заказ: ORD-1004",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
     service = EscalationService(crm)

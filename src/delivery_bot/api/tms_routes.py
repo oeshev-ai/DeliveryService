@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
 
 from delivery_bot.api.oms_routes import get_db_session
 from delivery_bot.config import Settings, get_settings

@@ -166,9 +166,7 @@ async def on_text(
         return
 
     if dialog_session.state in _STATUS_INPUT_STATES:
-        response = await status_service.handle_input(
-            dialog_session, message.text or ""
-        )
+        response = await status_service.handle_input(dialog_session, message.text or "")
         after = dialog_session.context.get("after_verify")
         if (
             after in {"change", "cancel", "claim", "review", "reorder"}
@@ -189,37 +187,27 @@ async def on_text(
         return
 
     if dialog_session.state == DialogState.CHANGE_AWAITING_ADDRESS:
-        response = await change_service.handle_input(
-            dialog_session, message.text or ""
-        )
+        response = await change_service.handle_input(dialog_session, message.text or "")
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
     if dialog_session.state == DialogState.CANCEL_AWAITING_COMMENT:
-        response = await cancel_service.handle_input(
-            dialog_session, message.text or ""
-        )
+        response = await cancel_service.handle_input(dialog_session, message.text or "")
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
     if dialog_session.state == DialogState.CLAIM:
-        response = await claim_service.handle_input(
-            dialog_session, message.text or ""
-        )
+        response = await claim_service.handle_input(dialog_session, message.text or "")
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
     if dialog_session.state == DialogState.REVIEW:
-        response = await review_service.handle_input(
-            dialog_session, message.text or ""
-        )
+        response = await review_service.handle_input(dialog_session, message.text or "")
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
     if dialog_session.state == DialogState.FAQ:
-        response = await faq_service.handle_input(
-            dialog_session, message.text or ""
-        )
+        response = await faq_service.handle_input(dialog_session, message.text or "")
         await message.answer(response.text, reply_markup=response.reply_markup)
         return
 
@@ -253,9 +241,7 @@ async def on_escalation_callback(
     dialog_session: DialogSession,
     escalation_service: EscalationService,
 ) -> None:
-    response = await escalation_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await escalation_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -281,9 +267,7 @@ async def on_change_callback(
     dialog_session: DialogSession,
     change_service: OrderChangeService,
 ) -> None:
-    response = await change_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await change_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -295,9 +279,7 @@ async def on_cancel_callback(
     dialog_session: DialogSession,
     cancel_service: OrderCancelService,
 ) -> None:
-    response = await cancel_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await cancel_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -309,9 +291,7 @@ async def on_faq_callback(
     dialog_session: DialogSession,
     faq_service: FaqService,
 ) -> None:
-    response = await faq_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await faq_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -323,9 +303,7 @@ async def on_claim_callback(
     dialog_session: DialogSession,
     claim_service: ClaimService,
 ) -> None:
-    response = await claim_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await claim_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -337,9 +315,7 @@ async def on_review_callback(
     dialog_session: DialogSession,
     review_service: ReviewService,
 ) -> None:
-    response = await review_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await review_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -351,9 +327,7 @@ async def on_reorder_callback(
     dialog_session: DialogSession,
     reorder_service: ReorderService,
 ) -> None:
-    response = await reorder_service.handle_callback(
-        dialog_session, query.data or ""
-    )
+    response = await reorder_service.handle_callback(dialog_session, query.data or "")
     await query.answer()
     if query.message:
         await query.message.answer(response.text, reply_markup=response.reply_markup)
@@ -378,9 +352,7 @@ async def on_callback(
 ) -> None:
     data = query.data or ""
     match = dialog_manager.matcher.match_callback(data)
-    response = dialog_manager.handle_intent(
-        dialog_session, match, callback_data=data
-    )
+    response = dialog_manager.handle_intent(dialog_session, match, callback_data=data)
     response = await _resolve_response(
         dialog_session,
         response,

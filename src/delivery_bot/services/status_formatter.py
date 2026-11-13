@@ -61,9 +61,7 @@ def format_order_status(order: OrderDTO, *, verified: bool = True) -> str:
             lines.append("Состав:")
             for item in order.items:
                 flag = "" if item.available else " (нет в наличии)"
-                lines.append(
-                    f"• {item.name} × {item.quantity} — {item.price} ₽{flag}"
-                )
+                lines.append(f"• {item.name} × {item.quantity} — {item.price} ₽{flag}")
     return "\n".join(lines)
 
 

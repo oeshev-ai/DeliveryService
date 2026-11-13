@@ -6,13 +6,6 @@ from typing import Any
 
 import httpx
 
-from delivery_bot.integrations.oms.schemas import (
-    OrderDTO,
-    OrderPublicDTO,
-    OrderSummaryDTO,
-    VerifyRequest,
-    VerifyResponse,
-)
 from delivery_bot.integrations.oms.cancel_schemas import (
     CancelReasonDTO,
     CancelResponse,
@@ -27,6 +20,13 @@ from delivery_bot.integrations.oms.change_schemas import (
     ApplySlotChangeRequest,
     ApplySlotChangeResponse,
     DeliveryRulesDTO,
+)
+from delivery_bot.integrations.oms.schemas import (
+    OrderDTO,
+    OrderPublicDTO,
+    OrderSummaryDTO,
+    VerifyRequest,
+    VerifyResponse,
 )
 from delivery_bot.logging_setup import get_logger
 
@@ -135,9 +135,7 @@ class OmsClient:
             raise OmsError(f"OMS error {resp.status_code}")
         return DeliveryRulesDTO.model_validate(resp.json())
 
-    async def quote_address(
-        self, order_id: str, address: str
-    ) -> AddressQuoteResponse:
+    async def quote_address(self, order_id: str, address: str) -> AddressQuoteResponse:
         payload = AddressQuoteRequest(order_id=order_id, address=address)
         try:
             resp = await self._http().post(
@@ -174,9 +172,7 @@ class OmsClient:
             raise OmsError(f"OMS error {resp.status_code}")
         return ApplyAddressChangeResponse.model_validate(resp.json())
 
-    async def change_slot(
-        self, order_id: str, slot_id: str
-    ) -> ApplySlotChangeResponse:
+    async def change_slot(self, order_id: str, slot_id: str) -> ApplySlotChangeResponse:
         payload = ApplySlotChangeRequest(order_id=order_id, slot_id=slot_id)
         try:
             resp = await self._http().post(

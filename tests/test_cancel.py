@@ -9,10 +9,9 @@ from fakeredis.aioredis import FakeRedis
 from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
 from delivery_bot.integrations.oms.cache import OrderStatusCache
-from delivery_bot.integrations.oms.cancel_schemas import CANCEL_REASONS
+from delivery_bot.integrations.oms.cancel_schemas import CANCEL_REASONS, CancelResponse
 from delivery_bot.integrations.oms.client import OmsClient
 from delivery_bot.integrations.oms.schemas import OrderDTO, OrderItemDTO
-from delivery_bot.integrations.oms.cancel_schemas import CancelResponse
 from delivery_bot.integrations.payments.mock import MockPaymentGateway
 from delivery_bot.services.order_cancel import OrderCancelService
 from delivery_bot.services.order_policy import can_cancel
@@ -184,9 +183,7 @@ async def test_cancel_blocked_when_delivering() -> None:
         phone_last4="4567",
         items=[],
     )
-    service = OrderCancelService(
-        AsyncMock(spec=OmsClient), OrderStatusCache(redis, ttl_seconds=60)
-    )
+    service = OrderCancelService(AsyncMock(spec=OmsClient), OrderStatusCache(redis, ttl_seconds=60))
     await service._cache.set(order)
     session = DialogSession(
         channel="telegram",

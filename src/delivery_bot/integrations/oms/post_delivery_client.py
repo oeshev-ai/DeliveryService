@@ -69,9 +69,7 @@ class PostDeliveryClient:
             resp.raise_for_status()
         return ClaimResponse.model_validate(resp.json())
 
-    async def review_status(
-        self, order_id: str, user_id: str
-    ) -> ReviewStatusResponse:
+    async def review_status(self, order_id: str, user_id: str) -> ReviewStatusResponse:
         resp = await self._http().get(
             f"/oms/v1/orders/{order_id}/review-status",
             params={"user_id": user_id},
@@ -102,9 +100,7 @@ class PostDeliveryClient:
         return ReviewResponse.model_validate(resp.json())
 
     async def reorder_preview(self, order_id: str) -> ReorderPreviewResponse:
-        resp = await self._http().get(
-            f"/oms/v1/orders/{order_id}/reorder-preview"
-        )
+        resp = await self._http().get(f"/oms/v1/orders/{order_id}/reorder-preview")
         if resp.status_code == 404:
             return ReorderPreviewResponse(
                 ok=False,
@@ -114,9 +110,7 @@ class PostDeliveryClient:
         resp.raise_for_status()
         return ReorderPreviewResponse.model_validate(resp.json())
 
-    async def confirm_reorder(
-        self, body: ReorderConfirmRequest
-    ) -> ReorderConfirmResponse:
+    async def confirm_reorder(self, body: ReorderConfirmRequest) -> ReorderConfirmResponse:
         resp = await self._http().post(
             "/oms/v1/orders/reorder",
             json=body.model_dump(mode="json"),

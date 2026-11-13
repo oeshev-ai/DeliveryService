@@ -6,10 +6,10 @@ from uuid import uuid4
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from delivery_bot.dialog.keyboards import main_menu_keyboard, operator_offer_keyboard
 from delivery_bot.dialog.manager import DialogResponse
 from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
-from delivery_bot.dialog.keyboards import main_menu_keyboard, operator_offer_keyboard
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient, OmsError
 from delivery_bot.logging_setup import get_logger
@@ -67,9 +67,7 @@ def _slots_keyboard(slots: list[tuple[str, str]]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text=label, callback_data=f"change:slot:{slot_id}")]
         for slot_id, label in slots
     ]
-    rows.append(
-        [InlineKeyboardButton(text="❌ Отменить", callback_data="change:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Отменить", callback_data="change:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -132,9 +130,7 @@ class OrderChangeService:
             reply_markup=_change_menu_keyboard(),
         )
 
-    async def handle_callback(
-        self, session: DialogSession, data: str
-    ) -> DialogResponse:
+    async def handle_callback(self, session: DialogSession, data: str) -> DialogResponse:
         if data == "change:abort":
             session.state = DialogState.MAIN_MENU
             session.context.pop("pending_address", None)
@@ -158,9 +154,7 @@ class OrderChangeService:
             return await self._apply_slot(session, slot_id)
         return DialogResponse(text="Неизвестное действие.")
 
-    async def handle_input(
-        self, session: DialogSession, text: str
-    ) -> DialogResponse:
+    async def handle_input(self, session: DialogSession, text: str) -> DialogResponse:
         if session.state == DialogState.CHANGE_AWAITING_ADDRESS:
             return await self._on_address(session, text)
         return await self.start(session)
@@ -207,8 +201,7 @@ class OrderChangeService:
             session.state = DialogState.CHANGE_MENU
             return DialogResponse(
                 text=(
-                    quote.message
-                    + "\n\nМожете указать другой адрес или связаться с оператором."
+                    quote.message + "\n\nМожете указать другой адрес или связаться с оператором."
                 ),
                 reply_markup=operator_offer_keyboard(
                     active_order_id=order_id,
@@ -249,9 +242,7 @@ class OrderChangeService:
                 reply_markup=_change_menu_keyboard(),
             )
         try:
-            result = await self._oms.change_address(
-                order_id, str(address), str(idem)
-            )
+            result = await self._oms.change_address(order_id, str(address), str(idem))
         except OmsError:
             return DialogResponse(
                 text="Не удалось сохранить адрес — сервис недоступен.",
@@ -285,8 +276,7 @@ class OrderChangeService:
         if not can_change_time(order.status):
             return DialogResponse(
                 text=(
-                    "Время уже нельзя изменить — заказ передан курьеру "
-                    "или дальше по процессу."
+                    "Время уже нельзя изменить — заказ передан курьеру " "или дальше по процессу."
                 ),
                 reply_markup=_change_menu_keyboard(),
             )
@@ -309,9 +299,7 @@ class OrderChangeService:
             reply_markup=_slots_keyboard(slots),
         )
 
-    async def _apply_slot(
-        self, session: DialogSession, slot_id: str
-    ) -> DialogResponse:
+    async def _apply_slot(self, session: DialogSession, slot_id: str) -> DialogResponse:
         order_id = str(session.context.get("verified_order_id"))
         try:
             result = await self._oms.change_slot(order_id, slot_id)

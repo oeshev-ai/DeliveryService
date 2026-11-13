@@ -7,8 +7,6 @@ import sys
 
 import structlog
 
-import structlog
-
 from delivery_bot.config import Settings
 from delivery_bot.security.pii import mask_pii_processor
 

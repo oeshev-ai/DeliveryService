@@ -44,11 +44,7 @@ async def get_webapp_user(
     x_webapp_dev_user: Annotated[str | None, Header(alias="X-WebApp-Dev-User")] = None,
 ) -> TelegramWebAppUser:
     """Аутентификация Mini App: initData или dev-bypass."""
-    if (
-        settings.webapp_dev_bypass
-        and settings.app_env in {"local", "test"}
-        and x_webapp_dev_user
-    ):
+    if settings.webapp_dev_bypass and settings.app_env in {"local", "test"} and x_webapp_dev_user:
         return TelegramWebAppUser(id=int(x_webapp_dev_user), first_name="Dev")
 
     if not x_telegram_init_data:
@@ -102,8 +98,7 @@ async def get_webapp_order(
     review_repo = PostDeliveryRepository(session)
     review = await review_repo.get_review(order.id, str(user.id))
     can_rev = can_review(order.status) and (
-        review is None
-        or (review.rating is None and not review.skipped)
+        review is None or (review.rating is None and not review.skipped)
     )
 
     return WebAppOrderView(
@@ -152,9 +147,7 @@ async def get_order_history(
         if full is None:
             continue
         review = await review_repo.get_review(full.id, str(user.id))
-        submitted = review is not None and (
-            review.rating is not None or review.skipped
-        )
+        submitted = review is not None and (review.rating is not None or review.skipped)
         items.append(
             WebAppHistoryItem(
                 id=full.id,

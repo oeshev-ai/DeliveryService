@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from delivery_bot.dialog.manager import DialogResponse
-from delivery_bot.dialog.session import DialogSession
-from delivery_bot.dialog.states import DialogState
 from delivery_bot.dialog.keyboards import (
     is_telegram_webapp_url,
     main_menu_keyboard,
     order_status_keyboard,
 )
+from delivery_bot.dialog.manager import DialogResponse
+from delivery_bot.dialog.session import DialogSession
+from delivery_bot.dialog.states import DialogState
 from delivery_bot.integrations.oms.cache import OrderStatusCache
 from delivery_bot.integrations.oms.client import OmsClient, OmsError
 from delivery_bot.integrations.tms.mock import MockTmsService
@@ -98,10 +98,7 @@ class CourierService:
         if is_telegram_webapp_url(self._webapp_url):
             lines.append("\nОткройте карту трекинга 👇")
         else:
-            lines.append(
-                "\nКарта в Mini App — после HTTPS "
-                "<code>TELEGRAM_WEBAPP_URL</code>."
-            )
+            lines.append("\nКарта в Mini App — после HTTPS " "<code>TELEGRAM_WEBAPP_URL</code>.")
 
         session.state = DialogState.ORDER_STATUS
         return DialogResponse(

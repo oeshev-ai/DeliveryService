@@ -25,9 +25,7 @@ class OrderModel(Base):
     courier_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     courier_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    delivered_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -147,9 +145,7 @@ class EscalationTicketModel(Base):
         onupdate=func.now(),
         nullable=False,
     )
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     messages: Mapped[list[EscalationMessageModel]] = relationship(
         back_populates="ticket",

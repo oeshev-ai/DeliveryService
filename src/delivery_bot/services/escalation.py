@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from delivery_bot.dialog import texts
 from delivery_bot.dialog.keyboards import main_menu_keyboard
 from delivery_bot.dialog.manager import DialogResponse
 from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
-from delivery_bot.dialog import texts
 from delivery_bot.integrations.crm.client import CrmClient, CrmError
 from delivery_bot.integrations.crm.schemas import (
     AddEscalationMessageRequest,

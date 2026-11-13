@@ -90,12 +90,7 @@ class LlmClient:
             )
 
         context = "\n\n".join(
-            (
-                f"[id={a.id}] {a.title}\n"
-                f"Q: {a.question}\n"
-                f"A: {a.answer}"
-            )
-            for a in articles[:6]
+            (f"[id={a.id}] {a.title}\n" f"Q: {a.question}\n" f"A: {a.answer}") for a in articles[:6]
         )
         payload = {
             "model": self._model,
@@ -104,10 +99,7 @@ class LlmClient:
                 {"role": "system", "content": _SYSTEM},
                 {
                     "role": "user",
-                    "content": (
-                        f"Статьи FAQ:\n{context}\n\n"
-                        f"Вопрос клиента: {question}"
-                    ),
+                    "content": (f"Статьи FAQ:\n{context}\n\n" f"Вопрос клиента: {question}"),
                 },
             ],
         }
@@ -122,11 +114,7 @@ class LlmClient:
             return LlmFaqResult(ok=False, answer="", confidence=0.0, article_id=None)
 
         data = resp.json()
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         return _parse_llm_json(content, {a.id for a in articles})
 
 

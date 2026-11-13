@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class DialogSession(BaseModel):
@@ -83,11 +83,7 @@ class RedisSessionStore:
                 channel=channel,
                 user_id=user_id,
                 consent_accepted=bool(consent_accepted),
-                state=(
-                    DialogState.MAIN_MENU
-                    if consent_accepted
-                    else DialogState.AWAITING_CONSENT
-                ),
+                state=(DialogState.MAIN_MENU if consent_accepted else DialogState.AWAITING_CONSENT),
             )
             if consent_accepted:
                 # Сессия истекла, согласие сохранено

@@ -41,9 +41,7 @@ async def _run() -> None:
     setup_metrics()
     logger = get_logger(__name__)
 
-    if not settings.telegram_bot_token or settings.telegram_bot_token.startswith(
-        "replace_me"
-    ):
+    if not settings.telegram_bot_token or settings.telegram_bot_token.startswith("replace_me"):
         logger.error(
             "telegram_token_missing",
             hint="Задайте TELEGRAM_BOT_TOKEN в .env",
@@ -92,12 +90,8 @@ async def _run() -> None:
     )
     await crm_client.start()
 
-    status_cache = OrderStatusCache(
-        redis, ttl_seconds=settings.status_cache_ttl_seconds
-    )
-    bindings = WebAppBindingStore(
-        redis, ttl_seconds=settings.webapp_binding_ttl_seconds
-    )
+    status_cache = OrderStatusCache(redis, ttl_seconds=settings.status_cache_ttl_seconds)
+    bindings = WebAppBindingStore(redis, ttl_seconds=settings.webapp_binding_ttl_seconds)
     tms = MockTmsService()
     review_service = ReviewService(oms, post_delivery, status_cache)
     status_service = OrderStatusService(

@@ -53,9 +53,7 @@ class WebAppBindingStore:
         binding = WebAppBinding(phone_last4=phone_last4, order_ids=order_ids[:20])
         await self._redis.set(
             self._key(telegram_user_id),
-            json.dumps(
-                {"phone_last4": binding.phone_last4, "order_ids": binding.order_ids}
-            ),
+            json.dumps({"phone_last4": binding.phone_last4, "order_ids": binding.order_ids}),
             ex=self._ttl,
         )
         return binding

@@ -20,21 +20,21 @@ from delivery_bot.integrations.oms.post_delivery_schemas import (
     ClaimReasonDTO,
     ClaimResponse,
     CreateClaimRequest,
-    ReviewResponse,
-    ReviewStatusResponse,
     ReorderConfirmRequest,
     ReorderConfirmResponse,
     ReorderPreviewResponse,
+    ReviewResponse,
+    ReviewStatusResponse,
     SkipReviewRequest,
     SubmitReviewRequest,
 )
 from delivery_bot.integrations.oms.repository import OmsRepository
+from delivery_bot.services.order_policy import can_review
 from delivery_bot.services.post_delivery import (
     build_reorder_preview,
     claim_denied_reason,
     confirm_reorder,
 )
-from delivery_bot.services.order_policy import can_review
 
 router = APIRouter(prefix="/oms/v1", tags=["post-delivery"])
 
@@ -80,9 +80,7 @@ async def create_claim(
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    reason = claim_denied_reason(
-        status=order.status, delivered_at=order.delivered_at
-    )
+    reason = claim_denied_reason(status=order.status, delivered_at=order.delivered_at)
     if reason:
         return ClaimResponse(ok=False, message=reason)
 
@@ -126,9 +124,7 @@ async def review_status(
 
     repo = PostDeliveryRepository(session)
     review = await repo.get_review(order_id, user_id)
-    submitted = review is not None and (
-        review.rating is not None or review.skipped
-    )
+    submitted = review is not None and (review.rating is not None or review.skipped)
     return ReviewStatusResponse(
         order_id=order.id,
         can_review=can_review(order.status) and not submitted,

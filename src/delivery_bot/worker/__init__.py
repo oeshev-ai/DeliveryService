@@ -14,8 +14,8 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 
 from delivery_bot.config import Settings, get_settings
-from delivery_bot.db.models import ReviewModel
 from delivery_bot.db.migrate import apply_schema_patches
+from delivery_bot.db.models import ReviewModel
 from delivery_bot.db.session import (
     create_engine,
     create_session_factory,
@@ -61,9 +61,7 @@ async def process_review_reminders(ctx: dict) -> None:
     """Отправляет отложенные напоминания об отзыве."""
     settings: Settings = ctx["settings"]
     redis: Redis = ctx["redis"]
-    if not settings.telegram_bot_token or settings.telegram_bot_token.startswith(
-        "replace_me"
-    ):
+    if not settings.telegram_bot_token or settings.telegram_bot_token.startswith("replace_me"):
         logger.warning("review_reminder_skipped", reason="no_bot_token")
         return
 
@@ -121,8 +119,7 @@ async def process_review_reminders(ctx: dict) -> None:
         try:
             await bot.send_message(
                 int(user_id),
-                f"Напоминание: как вам заказ <b>{order_id}</b>? "
-                "Оцените доставку от 1 до 5 ⭐",
+                f"Напоминание: как вам заказ <b>{order_id}</b>? " "Оцените доставку от 1 до 5 ⭐",
                 reply_markup=markup,
             )
             logger.info(
@@ -146,17 +143,13 @@ async def process_review_reminders(ctx: dict) -> None:
 async def process_operator_replies(ctx: dict) -> None:
     """Доставляет ответы оператора из CRM в Telegram."""
     settings: Settings = ctx["settings"]
-    if not settings.telegram_bot_token or settings.telegram_bot_token.startswith(
-        "replace_me"
-    ):
+    if not settings.telegram_bot_token or settings.telegram_bot_token.startswith("replace_me"):
         logger.warning("operator_reply_skipped", reason="no_bot_token")
         return
 
     factory = ctx["session_factory"]
     async with session_scope(factory) as session:
-        pending = await CrmRepository(session).list_undelivered_operator_messages(
-            limit=50
-        )
+        pending = await CrmRepository(session).list_undelivered_operator_messages(limit=50)
 
     if not pending:
         return

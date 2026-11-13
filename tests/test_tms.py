@@ -29,6 +29,6 @@ def test_tracking_paid_no_gps() -> None:
     )
     assert point.gps_available is False
     assert point.courier_lat is None
-    assert "назначен" in (point.message or "").lower() or "геолокац" in (
-        point.message or ""
-    ).lower()
+    assert (
+        "назначен" in (point.message or "").lower() or "геолокац" in (point.message or "").lower()
+    )

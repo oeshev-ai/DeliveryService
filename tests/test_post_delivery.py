@@ -34,9 +34,7 @@ def test_claim_window_14_days() -> None:
     assert can_submit_claim(status="delivered", delivered_at=recent, now=now)
     assert not can_submit_claim(status="delivered", delivered_at=old, now=now)
     assert CLAIM_WINDOW_DAYS == 14
-    assert "14" in claim_denied_reason(
-        status="delivered", delivered_at=old, now=now
-    )
+    assert "14" in claim_denied_reason(status="delivered", delivered_at=old, now=now)
 
 
 @pytest.mark.asyncio

@@ -34,9 +34,7 @@ def _reasons_keyboard() -> InlineKeyboardMarkup:
         ]
         for code, label in CLAIM_REASONS
     ]
-    rows.append(
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="claim:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="claim:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -110,9 +108,7 @@ class ClaimService:
             reply_markup=_reasons_keyboard(),
         )
 
-    async def handle_callback(
-        self, session: DialogSession, data: str
-    ) -> DialogResponse:
+    async def handle_callback(self, session: DialogSession, data: str) -> DialogResponse:
         if data == "claim:abort":
             self._clear_pending(session)
             session.state = DialogState.MAIN_MENU
@@ -137,9 +133,7 @@ class ClaimService:
             return await self._submit(session)
         return DialogResponse(text="Неизвестное действие.")
 
-    async def handle_input(
-        self, session: DialogSession, text: str
-    ) -> DialogResponse:
+    async def handle_input(self, session: DialogSession, text: str) -> DialogResponse:
         if session.state != DialogState.CLAIM:
             return await self.start(session)
         reason = session.context.get("claim_reason")
@@ -196,9 +190,7 @@ class ClaimService:
         for key in ("claim_reason", "claim_description", "claim_order_id"):
             session.context.pop(key, None)
 
-    async def _load_order(
-        self, session: DialogSession, order_id: str
-    ) -> OrderDTO | None:
+    async def _load_order(self, session: DialogSession, order_id: str) -> OrderDTO | None:
         cached = await self._cache.get(order_id)
         if cached:
             return cached

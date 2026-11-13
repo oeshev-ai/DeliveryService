@@ -7,7 +7,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from delivery_bot.integrations.oms.schemas import OrderDTO, OrderItemDTO
+from delivery_bot.integrations.oms.schemas import OrderDTO
 
 
 class ClaimReasonCode(StrEnum):

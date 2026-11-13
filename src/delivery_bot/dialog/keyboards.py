@@ -112,9 +112,7 @@ def order_status_keyboard(
                 [
                     InlineKeyboardButton(
                         text="📱 Виджет статуса",
-                        web_app=WebAppInfo(
-                            url=_webapp_order_url(webapp_url or "", order_id)
-                        ),
+                        web_app=WebAppInfo(url=_webapp_order_url(webapp_url or "", order_id)),
                     )
                 ]
             )
@@ -146,9 +144,7 @@ def order_list_keyboard(
             [
                 InlineKeyboardButton(
                     text="📱 Виджет статуса",
-                    web_app=WebAppInfo(
-                        url=_webapp_order_url(webapp_url or "", active_order_id)
-                    ),
+                    web_app=WebAppInfo(url=_webapp_order_url(webapp_url or "", active_order_id)),
                 )
             ]
         )
@@ -204,9 +200,7 @@ def operator_offer_keyboard(
                 )
             ]
         )
-    rows.append(
-        [InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")]
-    )
+    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

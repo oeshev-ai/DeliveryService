@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from delivery_bot.dialog import texts
 from delivery_bot.dialog.intents import Intent, IntentMatch, IntentMatcher
 from delivery_bot.dialog.keyboards import (
     consent_keyboard,
@@ -12,7 +13,6 @@ from delivery_bot.dialog.keyboards import (
 )
 from delivery_bot.dialog.session import DialogSession
 from delivery_bot.dialog.states import DialogState
-from delivery_bot.dialog import texts
 from delivery_bot.logging_setup import get_logger
 from delivery_bot.observability.metrics import inc_bot_intent
 
@@ -143,9 +143,7 @@ class DialogManager:
 
         if match.intent == Intent.OPERATOR:
             session.context["escalation_reason"] = (
-                session.context.get("escalation_reason")
-                or session.last_intent
-                or "operator"
+                session.context.get("escalation_reason") or session.last_intent or "operator"
             )
             return DialogResponse(text="", delegate_escalation=True)
 

@@ -108,15 +108,10 @@ def quote_address_change(address: str) -> AddressQuote:
         )
 
     surcharge = (
-        _DEFAULT_SURCHARGE
-        if any(m in lower for m in _SURCHARGE_MARKERS)
-        else Decimal("0.00")
+        _DEFAULT_SURCHARGE if any(m in lower for m in _SURCHARGE_MARKERS) else Decimal("0.00")
     )
     if surcharge > 0:
-        msg = (
-            f"Адрес в зоне доставки. Потребуется доплата {surcharge} ₽ "
-            "за удалённый район."
-        )
+        msg = f"Адрес в зоне доставки. Потребуется доплата {surcharge} ₽ " "за удалённый район."
     else:
         msg = "Адрес в зоне доставки, доплата не требуется."
 

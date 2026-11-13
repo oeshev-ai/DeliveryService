@@ -32,9 +32,7 @@ def _orders_keyboard(orders: list[OrderSummaryDTO]) -> InlineKeyboardMarkup:
         for o in orders[:6]
         if can_reorder(o.status)
     ]
-    rows.append(
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="reorder:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="reorder:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -94,8 +92,7 @@ class ReorderService:
         if not eligible:
             return DialogResponse(
                 text=(
-                    "В истории нет заказов для повтора "
-                    "(нужен статус delivered или cancelled)."
+                    "В истории нет заказов для повтора " "(нужен статус delivered или cancelled)."
                 ),
                 reply_markup=main_menu_keyboard(
                     active_order_id=session.context.get("verified_order_id")
@@ -108,9 +105,7 @@ class ReorderService:
             reply_markup=_orders_keyboard(eligible),
         )
 
-    async def handle_callback(
-        self, session: DialogSession, data: str
-    ) -> DialogResponse:
+    async def handle_callback(self, session: DialogSession, data: str) -> DialogResponse:
         if data == "reorder:abort":
             session.context.pop("reorder_source_id", None)
             session.context.pop("reorder_idem", None)
@@ -128,9 +123,7 @@ class ReorderService:
             return await self._confirm(session)
         return DialogResponse(text="Неизвестное действие.")
 
-    async def _preview(
-        self, session: DialogSession, order_id: str
-    ) -> DialogResponse:
+    async def _preview(self, session: DialogSession, order_id: str) -> DialogResponse:
         try:
             preview = await self._post.reorder_preview(order_id)
         except Exception:
@@ -157,10 +150,7 @@ class ReorderService:
             f"Сумма: {preview.total_amount} ₽",
         ]
         if preview.skipped_items:
-            lines.append(
-                "Пропущено (нет в наличии): "
-                + ", ".join(preview.skipped_items)
-            )
+            lines.append("Пропущено (нет в наличии): " + ", ".join(preview.skipped_items))
         lines.append("\nПодтвердить?")
         return DialogResponse(
             text="\n".join(lines),

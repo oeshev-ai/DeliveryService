@@ -26,9 +26,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(default="", description="Токен BotFather")
     telegram_webapp_url: str = "http://localhost:8000/ui"
 
-    database_url: str = (
-        "postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery"
-    )
+    database_url: str = "postgresql+asyncpg://delivery:delivery_secret@localhost:5432/delivery"
     redis_url: str = "redis://localhost:6379/0"
 
     api_host: str = "0.0.0.0"

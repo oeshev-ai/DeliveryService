@@ -40,9 +40,7 @@ class PostDeliveryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_claim_for_order(
-        self, order_id: str, user_id: str
-    ) -> ClaimModel | None:
+    async def get_claim_for_order(self, order_id: str, user_id: str) -> ClaimModel | None:
         return await self._session.scalar(
             select(ClaimModel).where(
                 ClaimModel.order_id == order_id.upper(),
@@ -64,9 +62,7 @@ class PostDeliveryRepository:
         await self._session.flush()
         return row
 
-    async def get_review(
-        self, order_id: str, user_id: str
-    ) -> ReviewModel | None:
+    async def get_review(self, order_id: str, user_id: str) -> ReviewModel | None:
         return await self._session.scalar(
             select(ReviewModel).where(
                 ReviewModel.order_id == order_id.upper(),

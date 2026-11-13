@@ -92,9 +92,7 @@ class ReviewService:
             )
         return await self._offer(session, str(order_id))
 
-    async def offer_for_order(
-        self, session: DialogSession, order_id: str
-    ) -> DialogResponse | None:
+    async def offer_for_order(self, session: DialogSession, order_id: str) -> DialogResponse | None:
         """Предложение отзыва после показа статуса delivered."""
         try:
             status = await self._post.review_status(order_id, session.user_id)
@@ -104,16 +102,11 @@ class ReviewService:
             return None
         session.context["review_order_id"] = order_id
         return DialogResponse(
-            text=(
-                f"Заказ <b>{order_id}</b> доставлен 🎉\n"
-                "Оцените доставку от 1 до 5:"
-            ),
+            text=(f"Заказ <b>{order_id}</b> доставлен 🎉\n" "Оцените доставку от 1 до 5:"),
             reply_markup=_rating_keyboard(order_id=order_id),
         )
 
-    async def handle_callback(
-        self, session: DialogSession, data: str
-    ) -> DialogResponse:
+    async def handle_callback(self, session: DialogSession, data: str) -> DialogResponse:
         if data == "review:skip":
             return await self._skip(session)
         if data == "review:start":
@@ -130,9 +123,7 @@ class ReviewService:
             return await self._submit(session, "")
         return DialogResponse(text="Неизвестное действие.")
 
-    async def handle_input(
-        self, session: DialogSession, text: str
-    ) -> DialogResponse:
+    async def handle_input(self, session: DialogSession, text: str) -> DialogResponse:
         if session.context.get("review_rating") is not None:
             return await self._submit(session, text)
         return await self.start(session)
@@ -168,15 +159,12 @@ class ReviewService:
             reply_markup=_rating_keyboard(order_id=order.id),
         )
 
-    async def _on_rating(
-        self, session: DialogSession, rating: int
-    ) -> DialogResponse:
+    async def _on_rating(self, session: DialogSession, rating: int) -> DialogResponse:
         session.context["review_rating"] = rating
         session.state = DialogState.REVIEW
         return DialogResponse(
             text=(
-                f"Оценка: {'⭐' * rating}\n"
-                "Можете добавить комментарий или нажмите «Пропустить»:"
+                f"Оценка: {'⭐' * rating}\n" "Можете добавить комментарий или нажмите «Пропустить»:"
             ),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -192,9 +180,7 @@ class ReviewService:
 
     async def _submit(self, session: DialogSession, comment: str) -> DialogResponse:
         order_id = str(
-            session.context.get("review_order_id")
-            or session.context.get("verified_order_id")
-            or ""
+            session.context.get("review_order_id") or session.context.get("verified_order_id") or ""
         )
         rating = session.context.get("review_rating")
         if not order_id or rating is None:
@@ -224,9 +210,7 @@ class ReviewService:
 
     async def _skip(self, session: DialogSession) -> DialogResponse:
         order_id = str(
-            session.context.get("review_order_id")
-            or session.context.get("verified_order_id")
-            or ""
+            session.context.get("review_order_id") or session.context.get("verified_order_id") or ""
         )
         if not order_id:
             session.state = DialogState.MAIN_MENU
@@ -255,9 +239,7 @@ class ReviewService:
             reply_markup=main_menu_keyboard(active_order_id=order_id),
         )
 
-    async def _load_order(
-        self, session: DialogSession, order_id: str
-    ) -> OrderDTO | None:
+    async def _load_order(self, session: DialogSession, order_id: str) -> OrderDTO | None:
         cached = await self._cache.get(order_id)
         if cached:
             return cached

@@ -7,19 +7,14 @@ import time
 import uuid
 from collections.abc import Callable
 
+import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-import structlog
-
 from delivery_bot.observability.metrics import HTTP_LATENCY, HTTP_REQUESTS, metrics_enabled
 
-_PATH_ID_RE = re.compile(
-    r"(/orders/)(ORD-\d+|[^/]+)|"
-    r"(/tickets/)(\d+)|"
-    r"(/articles/)(\d+)"
-)
+_PATH_ID_RE = re.compile(r"(/orders/)(ORD-\d+|[^/]+)|" r"(/tickets/)(\d+)|" r"(/articles/)(\d+)")
 
 
 def normalize_path(path: str) -> str:

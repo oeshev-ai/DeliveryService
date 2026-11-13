@@ -40,4 +40,3 @@ class WebAppHistoryItem(BaseModel):
     total_amount: Decimal
     delivery_slot: str | None = None
     can_reorder: bool = False
-

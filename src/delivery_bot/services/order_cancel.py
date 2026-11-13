@@ -41,9 +41,7 @@ def _cancel_menu_keyboard(*, partial_available: bool) -> InlineKeyboardMarkup:
                 )
             ]
         )
-    rows.append(
-        [InlineKeyboardButton(text="❌ Назад в меню", callback_data="cancel:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Назад в меню", callback_data="cancel:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -57,9 +55,7 @@ def _reasons_keyboard() -> InlineKeyboardMarkup:
         ]
         for code, label in CANCEL_REASONS
     ]
-    rows.append(
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="cancel:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -74,9 +70,7 @@ def _comment_keyboard(*, allow_skip: bool) -> InlineKeyboardMarkup:
                 )
             ]
         )
-    rows.append(
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="cancel:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -124,9 +118,7 @@ def _items_keyboard(
             )
         ]
     )
-    rows.append(
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel:abort")]
-    )
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="cancel:abort")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -182,9 +174,7 @@ class OrderCancelService:
             reply_markup=_cancel_menu_keyboard(partial_available=partial_ok),
         )
 
-    async def handle_callback(
-        self, session: DialogSession, data: str
-    ) -> DialogResponse:
+    async def handle_callback(self, session: DialogSession, data: str) -> DialogResponse:
         if data == "cancel:abort":
             self._clear_pending(session)
             session.state = DialogState.MAIN_MENU
@@ -212,9 +202,7 @@ class OrderCancelService:
             return await self._confirm(session)
         return DialogResponse(text="Неизвестное действие.")
 
-    async def handle_input(
-        self, session: DialogSession, text: str
-    ) -> DialogResponse:
+    async def handle_input(self, session: DialogSession, text: str) -> DialogResponse:
         if session.state == DialogState.CANCEL_AWAITING_COMMENT:
             return await self._on_comment(session, text)
         return await self.start(session)
@@ -248,12 +236,8 @@ class OrderCancelService:
             reply_markup=_items_keyboard(order.items, set()),
         )
 
-    async def _toggle_item(
-        self, session: DialogSession, item_id: int
-    ) -> DialogResponse:
-        order = await self._load_order(
-            session, str(session.context.get("verified_order_id"))
-        )
+    async def _toggle_item(self, session: DialogSession, item_id: int) -> DialogResponse:
+        order = await self._load_order(session, str(session.context.get("verified_order_id")))
         if order is None:
             return DialogResponse(
                 text="Заказ не найден.",
@@ -267,24 +251,17 @@ class OrderCancelService:
         session.context["cancel_item_ids"] = list(selected)
         session.state = DialogState.CANCEL_SELECT_ITEMS
         return DialogResponse(
-            text=(
-                f"Выбрано позиций: {len(selected)}.\n"
-                "Отметьте ещё или нажмите «Далее»."
-            ),
+            text=(f"Выбрано позиций: {len(selected)}.\n" "Отметьте ещё или нажмите «Далее»."),
             reply_markup=_items_keyboard(order.items, selected),
         )
 
     async def _items_done(self, session: DialogSession) -> DialogResponse:
         selected = list(session.context.get("cancel_item_ids") or [])
         if not selected:
-            order = await self._load_order(
-                session, str(session.context.get("verified_order_id"))
-            )
+            order = await self._load_order(session, str(session.context.get("verified_order_id")))
             return DialogResponse(
                 text="Выберите хотя бы одну позицию.",
-                reply_markup=_items_keyboard(
-                    order.items if order else [], set()
-                ),
+                reply_markup=_items_keyboard(order.items if order else [], set()),
             )
         session.state = DialogState.CANCEL_AWAITING_REASON
         return DialogResponse(
@@ -292,9 +269,7 @@ class OrderCancelService:
             reply_markup=_reasons_keyboard(),
         )
 
-    async def _on_reason(
-        self, session: DialogSession, reason_code: str
-    ) -> DialogResponse:
+    async def _on_reason(self, session: DialogSession, reason_code: str) -> DialogResponse:
         known = {c for c, _ in CANCEL_REASONS}
         if reason_code not in known:
             return DialogResponse(
@@ -315,9 +290,7 @@ class OrderCancelService:
             reply_markup=_comment_keyboard(allow_skip=allow_skip),
         )
 
-    async def _on_comment(
-        self, session: DialogSession, text: str
-    ) -> DialogResponse:
+    async def _on_comment(self, session: DialogSession, text: str) -> DialogResponse:
         reason = str(session.context.get("cancel_reason") or "")
         comment = (text or "").strip()
         if reason == _REASON_OTHER and not comment:
@@ -329,9 +302,7 @@ class OrderCancelService:
         return await self._show_confirm(session)
 
     async def _show_confirm(self, session: DialogSession) -> DialogResponse:
-        order = await self._load_order(
-            session, str(session.context.get("verified_order_id"))
-        )
+        order = await self._load_order(session, str(session.context.get("verified_order_id")))
         if order is None:
             return DialogResponse(
                 text="Заказ не найден.",
@@ -401,11 +372,7 @@ class OrderCancelService:
 
         if result.ok and result.order:
             await self._cache.set(result.order)
-            active = (
-                None
-                if result.order.status == "cancelled"
-                else result.order.id
-            )
+            active = None if result.order.status == "cancelled" else result.order.id
             if result.order.status == "cancelled":
                 session.context.pop("verified_order_id", None)
             return DialogResponse(
@@ -430,9 +397,7 @@ class OrderCancelService:
         ):
             session.context.pop(key, None)
 
-    async def _load_order(
-        self, session: DialogSession, order_id: str
-    ) -> OrderDTO | None:
+    async def _load_order(self, session: DialogSession, order_id: str) -> OrderDTO | None:
         cached = await self._cache.get(order_id)
         if cached:
             return cached

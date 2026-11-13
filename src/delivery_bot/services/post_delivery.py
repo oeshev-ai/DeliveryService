@@ -35,9 +35,7 @@ def claim_denied_reason(
     now = now or datetime.now(UTC)
     dt = delivered_at if delivered_at.tzinfo else delivered_at.replace(tzinfo=UTC)
     if now - dt > timedelta(days=CLAIM_WINDOW_DAYS):
-        return (
-            f"Срок подачи претензии истёк ({CLAIM_WINDOW_DAYS} дней после доставки)."
-        )
+        return f"Срок подачи претензии истёк ({CLAIM_WINDOW_DAYS} дней после доставки)."
     return ""
 
 
@@ -47,14 +45,10 @@ def can_submit_claim(
     delivered_at: datetime | None,
     now: datetime | None = None,
 ) -> bool:
-    return claim_denied_reason(
-        status=status, delivered_at=delivered_at, now=now
-    ) == ""
+    return claim_denied_reason(status=status, delivered_at=delivered_at, now=now) == ""
 
 
-async def build_reorder_preview(
-    session: AsyncSession, order_id: str
-) -> ReorderPreviewResponse:
+async def build_reorder_preview(session: AsyncSession, order_id: str) -> ReorderPreviewResponse:
     repo = OmsRepository(session)
     order = await repo.get_by_id(order_id)
     if order is None:

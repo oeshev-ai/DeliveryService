@@ -92,9 +92,7 @@ async def _do_full_cancel(
     return CancelResponse(
         ok=True,
         message=(
-            f"Заказ {order.id} отменён.\n"
-            f"Причина: {reason_label}.{extra}\n"
-            f"{pay.message}."
+            f"Заказ {order.id} отменён.\n" f"Причина: {reason_label}.{extra}\n" f"{pay.message}."
         ),
         refund_id=pay.payment_id,
         refund_amount=refund_amount,

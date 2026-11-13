@@ -7,7 +7,7 @@ from redis.asyncio import Redis
 
 from delivery_bot import __version__
 from delivery_bot.logging_setup import get_logger
-from delivery_bot.observability.metrics import render_metrics, setup_metrics
+from delivery_bot.observability.metrics import render_metrics
 from delivery_bot.redis_client import ping_redis
 
 logger = get_logger(__name__)

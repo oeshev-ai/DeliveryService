@@ -26,9 +26,7 @@ def _topics_keyboard(articles: list[FaqArticleDTO]) -> InlineKeyboardMarkup:
                 )
             ]
         )
-    rows.append(
-        [InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")]
-    )
+    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -65,9 +63,7 @@ def _after_answer_keyboard(
             )
         ]
     )
-    rows.append(
-        [InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")]
-    )
+    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu:main")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -106,9 +102,7 @@ class FaqService:
             reply_markup=_topics_keyboard(articles),
         )
 
-    async def handle_callback(
-        self, session: DialogSession, data: str
-    ) -> DialogResponse:
+    async def handle_callback(self, session: DialogSession, data: str) -> DialogResponse:
         if data == "faq:again":
             return await self.start(session)
         if data.startswith("faq:article:"):
@@ -116,9 +110,7 @@ class FaqService:
             return await self.show_article(session, article_id)
         return DialogResponse(text="Неизвестное действие FAQ.")
 
-    async def handle_input(
-        self, session: DialogSession, text: str
-    ) -> DialogResponse:
+    async def handle_input(self, session: DialogSession, text: str) -> DialogResponse:
         return await self.ask(session, text)
 
     async def ask(self, session: DialogSession, question: str) -> DialogResponse:
@@ -135,9 +127,7 @@ class FaqService:
             )
         return self._format_ask(session, result)
 
-    async def show_article(
-        self, session: DialogSession, article_id: int
-    ) -> DialogResponse:
+    async def show_article(self, session: DialogSession, article_id: int) -> DialogResponse:
         session.state = DialogState.FAQ
         try:
             article = await self._faq.get_article(article_id)
@@ -162,9 +152,7 @@ class FaqService:
             ),
         )
 
-    def _format_ask(
-        self, session: DialogSession, result: FaqAskResponse
-    ) -> DialogResponse:
+    def _format_ask(self, session: DialogSession, result: FaqAskResponse) -> DialogResponse:
         active = session.context.get("verified_order_id")
         header = ""
         if result.source == "llm":
@@ -177,10 +165,7 @@ class FaqService:
             faq_q = session.context.get("faq_last_question")
             if faq_q:
                 session.context["escalation_reason"] = f"faq:{str(faq_q)[:120]}"
-            text += (
-                "\n\nЕсли ответ неполный — выберите другую тему "
-                "или свяжитесь с оператором."
-            )
+            text += "\n\nЕсли ответ неполный — выберите другую тему " "или свяжитесь с оператором."
 
         return DialogResponse(
             text=text,
@@ -196,6 +181,4 @@ class FaqService:
             articles = await self._faq.list_articles()
             return _topics_keyboard(articles)
         except FaqError:
-            return main_menu_keyboard(
-                active_order_id=session.context.get("verified_order_id")
-            )
+            return main_menu_keyboard(active_order_id=session.context.get("verified_order_id"))
