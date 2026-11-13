@@ -94,36 +94,64 @@
     }
   }
 
+  function setHistoryMessage(text) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = text;
+    el.historyList.replaceChildren(p);
+  }
+
+  function renderHistoryCard(order) {
+    const article = document.createElement("article");
+    article.className = "history-card";
+    article.dataset.order = order.id;
+
+    const title = document.createElement("strong");
+    title.textContent = order.id;
+    article.append(title, document.createTextNode(` · ${order.status_label}`));
+    article.append(document.createElement("br"));
+
+    const meta = document.createElement("span");
+    meta.className = "muted";
+    meta.textContent = `${order.delivery_slot || "—"} · ${order.total_amount} ₽`;
+    article.append(meta);
+
+    if (order.can_reorder) {
+      article.append(document.createElement("br"));
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "можно повторить";
+      article.append(tag);
+    }
+    if (order.can_review) {
+      article.append(document.createElement("br"));
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "можно оценить";
+      article.append(tag);
+    }
+
+    article.addEventListener("click", () => {
+      const oid = article.dataset.order;
+      if (oid) window.location.search = `?order_id=${oid}`;
+      window.location.reload();
+    });
+    return article;
+  }
+
   async function loadHistory() {
-    el.historyList.innerHTML = "<p class=\"muted\">Загрузка…</p>";
+    setHistoryMessage("Загрузка…");
     try {
       const resp = await fetch(`${apiBase()}/history`, { headers: authHeaders() });
       if (!resp.ok) throw new Error(`Ошибка ${resp.status}`);
       const items = await resp.json();
       if (!items.length) {
-        el.historyList.innerHTML = "<p class=\"muted\">История пуста. Подтвердите заказ в боте.</p>";
+        setHistoryMessage("История пуста. Подтвердите заказ в боте.");
         return;
       }
-      el.historyList.innerHTML = items
-        .map(
-          (o) =>
-            `<article class="history-card" data-order="${o.id}">` +
-            `<strong>${o.id}</strong> · ${o.status_label}<br>` +
-            `<span class="muted">${o.delivery_slot || "—"} · ${o.total_amount} ₽</span>` +
-            (o.can_reorder ? `<br><span class="tag">можно повторить</span>` : "") +
-            (o.can_review ? `<br><span class="tag">можно оценить</span>` : "") +
-            `</article>`
-        )
-        .join("");
-      el.historyList.querySelectorAll(".history-card").forEach((card) => {
-        card.addEventListener("click", () => {
-          const oid = card.dataset.order;
-          if (oid) window.location.search = `?order_id=${oid}`;
-          window.location.reload();
-        });
-      });
+      el.historyList.replaceChildren(...items.map(renderHistoryCard));
     } catch (err) {
-      el.historyList.innerHTML = `<p class="muted">${err?.message || "Не удалось загрузить историю"}</p>`;
+      setHistoryMessage(err?.message || "Не удалось загрузить историю");
     }
   }
 
