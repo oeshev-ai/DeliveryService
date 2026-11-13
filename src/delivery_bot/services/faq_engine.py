@@ -87,8 +87,7 @@ async def answer_question(
     return FaqAskResponse(
         ok=False,
         answer=(
-            "Не нашёл точного ответа в базе знаний.\n"
-            "Выберите тему ниже или свяжитесь с оператором."
+            "Не нашёл точного ответа в базе знаний.\nВыберите тему ниже или свяжитесь с оператором."
         ),
         confidence=search.best.score if search.best else 0.0,
         source="none",

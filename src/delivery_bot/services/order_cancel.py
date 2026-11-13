@@ -251,7 +251,7 @@ class OrderCancelService:
         session.context["cancel_item_ids"] = list(selected)
         session.state = DialogState.CANCEL_SELECT_ITEMS
         return DialogResponse(
-            text=(f"Выбрано позиций: {len(selected)}.\n" "Отметьте ещё или нажмите «Далее»."),
+            text=(f"Выбрано позиций: {len(selected)}.\nОтметьте ещё или нажмите «Далее»."),
             reply_markup=_items_keyboard(order.items, selected),
         )
 

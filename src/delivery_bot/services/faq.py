@@ -165,7 +165,7 @@ class FaqService:
             faq_q = session.context.get("faq_last_question")
             if faq_q:
                 session.context["escalation_reason"] = f"faq:{str(faq_q)[:120]}"
-            text += "\n\nЕсли ответ неполный — выберите другую тему " "или свяжитесь с оператором."
+            text += "\n\nЕсли ответ неполный — выберите другую тему или свяжитесь с оператором."
 
         return DialogResponse(
             text=text,

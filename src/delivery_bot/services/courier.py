@@ -98,7 +98,7 @@ class CourierService:
         if is_telegram_webapp_url(self._webapp_url):
             lines.append("\nОткройте карту трекинга 👇")
         else:
-            lines.append("\nКарта в Mini App — после HTTPS " "<code>TELEGRAM_WEBAPP_URL</code>.")
+            lines.append("\nКарта в Mini App — после HTTPS <code>TELEGRAM_WEBAPP_URL</code>.")
 
         session.state = DialogState.ORDER_STATUS
         return DialogResponse(

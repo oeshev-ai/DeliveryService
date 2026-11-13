@@ -90,7 +90,7 @@ class LlmClient:
             )
 
         context = "\n\n".join(
-            (f"[id={a.id}] {a.title}\n" f"Q: {a.question}\n" f"A: {a.answer}") for a in articles[:6]
+            (f"[id={a.id}] {a.title}\nQ: {a.question}\nA: {a.answer}") for a in articles[:6]
         )
         payload = {
             "model": self._model,
@@ -99,7 +99,7 @@ class LlmClient:
                 {"role": "system", "content": _SYSTEM},
                 {
                     "role": "user",
-                    "content": (f"Статьи FAQ:\n{context}\n\n" f"Вопрос клиента: {question}"),
+                    "content": (f"Статьи FAQ:\n{context}\n\nВопрос клиента: {question}"),
                 },
             ],
         }

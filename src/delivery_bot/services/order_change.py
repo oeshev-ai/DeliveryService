@@ -276,9 +276,7 @@ class OrderChangeService:
             )
         if not can_change_time(order.status):
             return DialogResponse(
-                text=(
-                    "Время уже нельзя изменить — заказ передан курьеру " "или дальше по процессу."
-                ),
+                text=("Время уже нельзя изменить — заказ передан курьеру или дальше по процессу."),
                 reply_markup=_change_menu_keyboard(),
             )
         try:

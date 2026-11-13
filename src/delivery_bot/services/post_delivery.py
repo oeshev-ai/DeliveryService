@@ -95,10 +95,7 @@ async def build_reorder_preview(session: AsyncSession, order_id: str) -> Reorder
 
     msg = "Готово к повторному заказу."
     if skipped:
-        msg = (
-            f"Недоступные позиции будут пропущены: {', '.join(skipped)}.\n"
-            f"Новая сумма: {total} ₽."
-        )
+        msg = f"Недоступные позиции будут пропущены: {', '.join(skipped)}.\nНовая сумма: {total} ₽."
     return ReorderPreviewResponse(
         ok=True,
         message=msg,

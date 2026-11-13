@@ -91,9 +91,7 @@ class ReorderService:
         eligible = [o for o in orders if can_reorder(o.status)]
         if not eligible:
             return DialogResponse(
-                text=(
-                    "В истории нет заказов для повтора " "(нужен статус delivered или cancelled)."
-                ),
+                text=("В истории нет заказов для повтора (нужен статус delivered или cancelled)."),
                 reply_markup=main_menu_keyboard(
                     active_order_id=session.context.get("verified_order_id")
                 ),

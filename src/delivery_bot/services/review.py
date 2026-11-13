@@ -102,7 +102,7 @@ class ReviewService:
             return None
         session.context["review_order_id"] = order_id
         return DialogResponse(
-            text=(f"Заказ <b>{order_id}</b> доставлен 🎉\n" "Оцените доставку от 1 до 5:"),
+            text=(f"Заказ <b>{order_id}</b> доставлен 🎉\nОцените доставку от 1 до 5:"),
             reply_markup=_rating_keyboard(order_id=order_id),
         )
 
@@ -164,7 +164,7 @@ class ReviewService:
         session.state = DialogState.REVIEW
         return DialogResponse(
             text=(
-                f"Оценка: {'⭐' * rating}\n" "Можете добавить комментарий или нажмите «Пропустить»:"
+                f"Оценка: {'⭐' * rating}\nМожете добавить комментарий или нажмите «Пропустить»:"
             ),
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[

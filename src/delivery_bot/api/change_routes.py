@@ -155,9 +155,7 @@ async def change_slot(
     if not can_change_time(order.status):
         return ApplySlotChangeResponse(
             ok=False,
-            message=(
-                "Время уже нельзя изменить — заказ передан курьеру " "или дальше по процессу."
-            ),
+            message=("Время уже нельзя изменить — заказ передан курьеру или дальше по процессу."),
         )
 
     slot = find_slot(body.slot_id)
