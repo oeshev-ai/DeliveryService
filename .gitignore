@@ -21,6 +21,7 @@ htmlcov/
 .vscode/
 *.swp
 .DS_Store
+.cursor/
 
 # Local data
 data/
