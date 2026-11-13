@@ -96,8 +96,9 @@ async def test_cancel_full_flow() -> None:
         order=cancelled,
     )
 
-    service = OrderCancelService(oms, OrderStatusCache(redis, ttl_seconds=60))
-    await service._cache.set(order)
+    cache = OrderStatusCache(redis, ttl_seconds=60)
+    service = OrderCancelService(oms, cache)
+    await cache.set(order)
     session = DialogSession(
         channel="telegram",
         user_id="42",
@@ -144,8 +145,9 @@ async def test_cancel_partial_flow() -> None:
         order=remaining,
     )
 
-    service = OrderCancelService(oms, OrderStatusCache(redis, ttl_seconds=60))
-    await service._cache.set(order)
+    cache = OrderStatusCache(redis, ttl_seconds=60)
+    service = OrderCancelService(oms, cache)
+    await cache.set(order)
     session = DialogSession(
         channel="telegram",
         user_id="42",
@@ -183,8 +185,9 @@ async def test_cancel_blocked_when_delivering() -> None:
         phone_last4="4567",
         items=[],
     )
-    service = OrderCancelService(AsyncMock(spec=OmsClient), OrderStatusCache(redis, ttl_seconds=60))
-    await service._cache.set(order)
+    cache = OrderStatusCache(redis, ttl_seconds=60)
+    service = OrderCancelService(AsyncMock(spec=OmsClient), cache)
+    await cache.set(order)
     session = DialogSession(
         channel="telegram",
         user_id="1",

@@ -129,7 +129,7 @@ class OrderStatusService:
         )
 
     async def _on_order_id(self, session: DialogSession, text: str) -> DialogResponse:
-        order_id = _normalize_order_id(text)
+        order_id = normalize_order_id(text)
         if not order_id:
             return DialogResponse(
                 text="Не распознал номер заказа. Пример: <code>ORD-1001</code>.",
@@ -327,7 +327,7 @@ class OrderStatusService:
         )
 
 
-def _normalize_order_id(text: str) -> str | None:
+def normalize_order_id(text: str) -> str | None:
     raw = text.strip().upper().replace(" ", "")
     match = _ORDER_ID_RE.match(raw)
     if not match:

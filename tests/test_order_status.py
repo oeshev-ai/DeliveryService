@@ -17,7 +17,7 @@ from delivery_bot.integrations.oms.schemas import (
     OrderPublicDTO,
     VerifyResponse,
 )
-from delivery_bot.services.order_status import OrderStatusService, _normalize_order_id
+from delivery_bot.services.order_status import OrderStatusService, normalize_order_id
 from delivery_bot.services.status_formatter import format_order_status, format_public_status
 
 
@@ -27,10 +27,10 @@ def test_phone_last4() -> None:
 
 
 def test_normalize_order_id() -> None:
-    assert _normalize_order_id("1001") == "ORD-1001"
-    assert _normalize_order_id("ord-1001") == "ORD-1001"
-    assert _normalize_order_id("ORD-1001") == "ORD-1001"
-    assert _normalize_order_id("abc") is None
+    assert normalize_order_id("1001") == "ORD-1001"
+    assert normalize_order_id("ord-1001") == "ORD-1001"
+    assert normalize_order_id("ORD-1001") == "ORD-1001"
+    assert normalize_order_id("abc") is None
 
 
 def test_format_public_and_full() -> None:
